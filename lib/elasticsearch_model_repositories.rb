@@ -1,6 +1,7 @@
-require "elasticsearch_model_repositories/version"
+require 'hashie/mash'
 
-module ElasticsearchModelRepositories
-  class Error < StandardError; end
-  # Your code goes here...
-end
+require_relative 'elasticsearch_model_repositories/base_strategy'
+require_relative 'elasticsearch_model_repositories/version'
+require_relative 'elasticsearch_model_repositories/model'
+require_relative 'elasticsearch_model_repositories/importing'
+require_relative 'elasticsearch_model_repositories/response'
