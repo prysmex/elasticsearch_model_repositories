@@ -166,8 +166,8 @@ module ElasticsearchRepositories
       end
 
       if options.delete(:force)
-        self.create_index! force: true, index: target_index
-      elsif !self.index_exists? index: target_index
+        strategy.create_index! force: true, index: target_index
+      elsif !strategy.index_exists? index: target_index
         raise ArgumentError,
               "#{target_index} does not exist to be imported into. Use create_index! or the :force option to create it."
       end
@@ -192,7 +192,7 @@ module ElasticsearchRepositories
         end
       end
 
-      self.refresh_index! index: target_index if refresh
+      strategy.refresh_index! index: target_index if refresh
 
       case return_value
         when 'errors'
