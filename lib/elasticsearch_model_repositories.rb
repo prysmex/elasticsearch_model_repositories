@@ -28,7 +28,6 @@ require_relative 'elasticsearch_repositories/response'
 require_relative 'elasticsearch_repositories/adapter'
 require_relative 'elasticsearch_repositories/adapters/active_record'
 require_relative 'elasticsearch_repositories/adapters/default'
-require_relative 'elasticsearch_repositories/adapters/mongoid'
 
 module ElasticsearchRepositories
   module ClassMethods
