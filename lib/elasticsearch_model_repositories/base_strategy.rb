@@ -1,14 +1,14 @@
-require_relative 'strategy/configuration'
-require_relative 'strategy/importing'
-require_relative 'strategy/indexing'
-require_relative 'strategy/management'
-require_relative 'strategy/searching'
-require_relative 'strategy/serializing'
+# require_relative 'strategy/configuration'
+# require_relative 'strategy/importing'
+# require_relative 'strategy/indexing'
+# require_relative 'strategy/management'
+# require_relative 'strategy/searching'
+# require_relative 'strategy/serializing'
 
 module ElasticsearchModelRepositories
   class BaseStrategy
 
-    include ElasticsearchModelRepositories::Strategy::Configuration
+    include ElasticsearchModelRepositories::Strategy::Configuration::Methods
     include ElasticsearchModelRepositories::Strategy::Importing
     include ElasticsearchModelRepositories::Strategy::Indexing
     include ElasticsearchModelRepositories::Strategy::Management
@@ -16,7 +16,7 @@ module ElasticsearchModelRepositories
     include ElasticsearchModelRepositories::Strategy::Serializing
 
     attr_reader :client
-    attr_reader :klass
+    attr_reader :host
     attr_reader :name
       
     def initialize(klass, client, name=nil, &block)

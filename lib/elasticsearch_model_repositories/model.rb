@@ -1,8 +1,8 @@
 module ElasticsearchModelRepositories
   module Model
-
+    
     module ClassMethods
-      
+            
       attr_accessor :indexing_strategies
 
       # Register a new indexing strategy to the model
@@ -13,7 +13,7 @@ module ElasticsearchModelRepositories
         if strategy
           raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
         else
-          strategy = strategy_klass.new(self, ::Elasticsearch::Model.client, name, &block)
+          strategy = strategy_klass.new(self, ::ElasticsearchModelRepositories.client, name, &block)
           strategies.push(strategy)
           self.instance_variable_set('@indexing_strategies', strategies)
         end
@@ -47,14 +47,14 @@ module ElasticsearchModelRepositories
       end
 
       #all class indices must comply with this base name
-      def self.delete_all_klass_indices!
-        Elasticsearch::Model.client.cat.indices(
+      def delete_all_klass_indices!
+        ElasticsearchModelRepositories.client.cat.indices(
           index: "#{self._base_index_name}*", h: ['index', 'docs.count']
         ).each_line do |line|
           index, count = line.chomp.split("\s")
           if index.present?
             puts "deleting #{index}"
-            Elasticsearch::Model.client.indices.delete(index: index)
+            ElasticsearchModelRepositories.client.indices.delete(index: index)
           end
         end
       end

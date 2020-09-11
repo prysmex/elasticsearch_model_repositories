@@ -2,6 +2,9 @@ PATH
   remote: .
   specs:
     elasticsearch_model_repositories (0.1.0)
+      activesupport (> 3)
+      elasticsearch (> 7.5.0)
+      hashie
 
 GEM
   remote: https://rubygems.org/
@@ -19,10 +22,6 @@ GEM
       elasticsearch-transport (= 7.9.0)
     elasticsearch-api (7.9.0)
       multi_json
-    elasticsearch-model (7.1.0)
-      activesupport (> 3)
-      elasticsearch (> 1)
-      hashie
     elasticsearch-transport (7.9.0)
       faraday (~> 1)
       multi_json
@@ -58,7 +57,6 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 1.17)
-  elasticsearch-model (= 7.1.0)
   elasticsearch_model_repositories!
   rake (~> 13.0)
   rspec (~> 3.9.0)

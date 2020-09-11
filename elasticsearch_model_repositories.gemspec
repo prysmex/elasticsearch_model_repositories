@@ -35,8 +35,12 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "elasticsearch", "> 7.5.0"
+  spec.add_dependency 'hashie'
+  # spec.add_dependency 'activesupport', '> 3'
+
+  # spec.add_development_dependency 'activemodel', '> 3'
   spec.add_development_dependency "bundler", "~> 1.17"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.9.0"
-  # spec.add_development_dependency "elasticsearch-model", "7.1.0"
 end
