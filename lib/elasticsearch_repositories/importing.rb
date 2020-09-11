@@ -44,7 +44,7 @@ module ElasticsearchRepositories
         index: index_name,
         batch_size: options[:batch_size],
         refresh: options[:refresh],
-        # scope: # for some reason it only works if the query is defined inside the 'query' lambda
+        scope: options[:scope],# for some reason it only works if the query is defined inside the 'query' lambda
         strategy: options[:strategy],
         transform: options[:transform],
         query: -> {
