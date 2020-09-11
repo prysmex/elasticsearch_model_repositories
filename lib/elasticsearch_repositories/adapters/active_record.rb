@@ -99,8 +99,15 @@ module ElasticsearchRepositories
           end
         end
 
+        #TODO support strategies
         def __transform
-          lambda { |model|  { index: { _id: model.id, data: model.__elasticsearch__.as_indexed_json } } }
+          lambda do |model, strat|
+            if strat.index_without_id
+              { index: { data: strat.as_indexed_json(model) } }
+            else
+              { index: { _id: model.id, data: strat.as_indexed_json(model) } }
+            end
+          end
         end
 
       end

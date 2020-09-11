@@ -39,21 +39,14 @@ module ElasticsearchRepositories
         body: { index: { refresh_interval: -1 } }
       )
 
-      transform = lambda do |model|
-        if self.index_without_id
-          { index: { data: strategy.as_indexed_json(model) } }
-        else
-          { index: { _id: model.id, data: strategy.as_indexed_json(model) } }
-        end
-      end
-
       error_count = import(
         force: false,
         index: index_name,
         batch_size: options[:batch_size],
         refresh: options[:refresh],
         # scope: # for some reason it only works if the query is defined inside the 'query' lambda
-        transform: options[:transform] || transform,
+        strategy: options[:strategy],
+        transform: options[:transform],
         query: -> {
           strategy.reindexing_includes_proc(
             import_db_query
@@ -160,9 +153,10 @@ module ElasticsearchRepositories
     def import(options={}, &block)
       errors       = []
       refresh      = options.delete(:refresh)   || false
-      target_index = options.delete(:index)#     || index_name
-      target_type  = options.delete(:type)#      || document_type
-      transform    = options.delete(:transform)# || __transform
+      target_index = options.delete(:index)
+      target_type  = options.delete(:type)
+      strategy    = options.delete(:strategy)
+      transform    = options.delete(:transform) || __transform
       pipeline     = options.delete(:pipeline)
       return_value = options.delete(:return)    || 'count'
 
@@ -182,7 +176,7 @@ module ElasticsearchRepositories
         params = {
           index: target_index,
           type:  target_type,
-          body:  __batch_to_bulk(batch, transform)
+          body:  __batch_to_bulk(batch, strategy, transform)
         }
 
         params[:pipeline] = pipeline if pipeline
@@ -208,8 +202,8 @@ module ElasticsearchRepositories
       end
     end
 
-    def __batch_to_bulk(batch, transform)
-      batch.map { |model| transform.call(model) }
+    def __batch_to_bulk(batch, strategy, transform)
+      batch.map { |model| transform.call(model, strategy) }
     end
 
   end
