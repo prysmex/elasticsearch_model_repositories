@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Response
 
       # Encapsulate the response returned from the Elasticsearch client

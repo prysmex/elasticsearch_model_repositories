@@ -5,15 +5,15 @@
 # require_relative 'strategy/searching'
 # require_relative 'strategy/serializing'
 
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   class BaseStrategy
 
-    include ElasticsearchModelRepositories::Strategy::Configuration::Methods
-    include ElasticsearchModelRepositories::Strategy::Importing
-    include ElasticsearchModelRepositories::Strategy::Indexing
-    include ElasticsearchModelRepositories::Strategy::Management
-    include ElasticsearchModelRepositories::Strategy::Searching::Methods
-    include ElasticsearchModelRepositories::Strategy::Serializing
+    include ElasticsearchRepositories::Strategy::Configuration::Methods
+    include ElasticsearchRepositories::Strategy::Importing
+    include ElasticsearchRepositories::Strategy::Indexing
+    include ElasticsearchRepositories::Strategy::Management
+    include ElasticsearchRepositories::Strategy::Searching::Methods
+    include ElasticsearchRepositories::Strategy::Serializing
 
     attr_reader :client
     attr_reader :host

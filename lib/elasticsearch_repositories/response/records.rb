@@ -1,10 +1,10 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Response
 
     # Encapsulates the collection of records returned from the database
     #
     # Implements Enumerable and forwards its methods to the {#records} object,
-    # which is provided by an {Elasticsearch::Model::Adapter::Adapter} implementation.
+    # which is provided by an {ElasticsearchRepositories::Adapter::Adapter} implementation.
     #
     class Records
       include Enumerable

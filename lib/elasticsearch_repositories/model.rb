@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Model
     
     module ClassMethods
@@ -13,7 +13,7 @@ module ElasticsearchModelRepositories
         if strategy
           raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
         else
-          strategy = strategy_klass.new(self, ::ElasticsearchModelRepositories.client, name, &block)
+          strategy = strategy_klass.new(self, ::ElasticsearchRepositories.client, name, &block)
           strategies.push(strategy)
           self.instance_variable_set('@indexing_strategies', strategies)
         end
@@ -48,13 +48,13 @@ module ElasticsearchModelRepositories
 
       #all class indices must comply with this base name
       def delete_all_klass_indices!
-        ElasticsearchModelRepositories.client.cat.indices(
+        ElasticsearchRepositories.client.cat.indices(
           index: "#{self._base_index_name}*", h: ['index', 'docs.count']
         ).each_line do |line|
           index, count = line.chomp.split("\s")
           if index.present?
             puts "deleting #{index}"
-            ElasticsearchModelRepositories.client.indices.delete(index: index)
+            ElasticsearchRepositories.client.indices.delete(index: index)
           end
         end
       end

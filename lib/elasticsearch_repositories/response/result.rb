@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Response
 
     # Encapsulates the "hit" returned from the Elasticsearch client

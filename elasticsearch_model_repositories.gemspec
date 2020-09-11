@@ -5,7 +5,7 @@ require "elasticsearch_model_repositories/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "elasticsearch_model_repositories"
-  spec.version       = ElasticsearchModelRepositories::VERSION
+  spec.version       = ElasticsearchRepositories::VERSION
   spec.authors       = ["Pato"]
   spec.email         = ["pato_devilla@hotmail.com"]
 

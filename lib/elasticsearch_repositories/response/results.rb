@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Response
 
     # Encapsulates the collection of documents returned from Elasticsearch

@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
     # Subclass of `Hashie::Mash` to wrap Hash-like structures
     # (responses from Elasticsearch, search definitions, etc)
     #

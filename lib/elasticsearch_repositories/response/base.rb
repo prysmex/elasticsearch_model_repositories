@@ -1,6 +1,6 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Response
-    # Common funtionality for classes in the {Elasticsearch::Model::Response} module
+    # Common funtionality for classes in the {ElasticsearchRepositories::Response} module
     #
     module Base
       attr_reader :klass, :response, :raw_response

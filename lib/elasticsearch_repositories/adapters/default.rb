@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Adapter
 
     # The default adapter for models which haven't one registered

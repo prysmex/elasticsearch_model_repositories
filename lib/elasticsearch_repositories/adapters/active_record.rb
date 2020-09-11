@@ -1,4 +1,4 @@
-module ElasticsearchModelRepositories
+module ElasticsearchRepositories
   module Adapter
 
     # An adapter for ActiveRecord-based models
