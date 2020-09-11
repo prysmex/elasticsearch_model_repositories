@@ -15,6 +15,72 @@ module ElasticsearchRepositories
       end
     end
 
+    def reload_indices!(options={})
+
+      required_options = [
+        :batch_size, :index, :es_query, :es_query_options,
+        :strategy, :settings, :mappings
+      ]
+
+      start_time = options[:start_time]
+      end_time = options[:end_time]
+
+      sanitized_options = options.slice(
+        :batch_size,
+        :batch_sleep,
+        :refresh,
+        :force,
+        :verify_count
+      )
+      
+      default_options = {
+        batch_size: 1000,
+        batch_sleep: 2,
+        refresh: false,
+        force: true,
+        verify_count: true
+      }
+
+      error_count = 0
+      _call_reindex_iterators(
+        start_time,
+        end_time
+      ) do |import_db_query, iterator_options|
+        iterator_options = iterator_options.slice(
+          :batch_size,
+          :batch_sleep,
+          :refresh,
+          :force,
+          :verify_count,
+          :refresh,
+          :index,
+          :type,
+          :transform,
+          :pipeline,
+          :import_db_query,
+          :es_query,
+          :es_query_options
+        )
+        merged_options = default_options
+            .merge(iterator_options)
+            .merge(sanitized_options)
+
+        required_options.each do|name|
+          unless merged_options.key?(name)
+            raise ArgumentError.new("missing key #{name} in options while importing")
+          end
+        end
+
+        shards_error_count = _create_index_and_import_data(import_db_query, merged_options)
+        if merged_options[:verify_count]
+          _verify_index_doc_count(import_db_query, merged_options)
+        end
+      end
+
+      puts error_count
+      return error_count
+    end
+
     # Wrapper of import method
     # Updates and index refresh_interval setting for faster indexing
     # When options[:force] is true, the index in deleted and recreated with
@@ -82,72 +148,6 @@ module ElasticsearchRepositories
         puts "(DB=#{db_count}, ES=#{es_count}) for query: #{es_query}"
       end
       db_count == es_count
-    end
-
-    def reload_index!(options={})
-
-      required_options = [
-        :batch_size, :index, :es_query, :es_query_options,
-        :strategy, :settings, :mappings
-      ]
-
-      start_time = options[:start_time]
-      end_time = options[:end_time]
-
-      sanitized_options = options.slice(
-        :batch_size,
-        :batch_sleep,
-        :refresh,
-        :force,
-        :verify_count
-      )
-      
-      default_options = {
-        batch_size: 1000,
-        batch_sleep: 2,
-        refresh: false,
-        force: true,
-        verify_count: true
-      }
-
-      error_count = 0
-      _call_reindex_iterators(
-        start_time,
-        end_time
-      ) do |import_db_query, iterator_options|
-        iterator_options = iterator_options.slice(
-          :batch_size,
-          :batch_sleep,
-          :refresh,
-          :force,
-          :verify_count,
-          :refresh,
-          :index,
-          :type,
-          :transform,
-          :pipeline,
-          :import_db_query,
-          :es_query,
-          :es_query_options
-        )
-        merged_options = default_options
-            .merge(iterator_options)
-            .merge(sanitized_options)
-
-        required_options.each do|name|
-          unless merged_options.key?(name)
-            raise ArgumentError.new("missing key #{name} in options while importing")
-          end
-        end
-
-        shards_error_count = _create_index_and_import_data(import_db_query, merged_options)
-        if merged_options[:verify_count]
-          _verify_index_doc_count(import_db_query, merged_options)
-        end
-      end
-
-      puts error_count
-      return error_count
     end
 
     def import(options={}, &block)
