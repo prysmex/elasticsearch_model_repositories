@@ -13,12 +13,13 @@ module ElasticsearchRepositories
 
       attr_accessor :options
 
-      include Base
+      attr_reader :klass, :response, :raw_response
 
-      # @see Base#initialize
-      #
       def initialize(klass, response, options={})
-        super
+        
+        @klass = klass
+        @raw_response = response
+        @response = response
 
         # Include module provided by the adapter in the singleton class ("metaclass")
         #

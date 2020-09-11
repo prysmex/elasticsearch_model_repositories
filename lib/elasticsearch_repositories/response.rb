@@ -30,7 +30,8 @@ module ElasticsearchRepositories
         # @return [Results]
         #
         def results
-          @results ||= Results.new(strategy.instance_variable_get('@host'), self)
+          # @results ||= Results.new(strategy.instance_variable_get('@host'), self)
+          @results ||= response['hits']['hits'].map { |hit| Result.new(hit) }
         end
 
         # Returns the collection of records from the database
@@ -39,6 +40,22 @@ module ElasticsearchRepositories
         #
         def records(options = {})
           @records ||= Records.new(strategy.instance_variable_get('@host'), self, options)
+        end
+
+        # Returns the total number of hits
+        #
+        def total
+          if response['hits']['total'].respond_to?(:keys)
+            response['hits']['total']['value']
+          else
+            response['hits']['total']
+          end
+        end
+
+        # Returns the max_score
+        #
+        def max_score
+          response['hits']['max_score']
         end
 
         # Returns the "took" time

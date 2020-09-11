@@ -13,7 +13,8 @@ module ElasticsearchRepositories
       # @param attributes [Hash] A Hash with document properties
       #
       def initialize(attributes={})
-        @result = HashWrapper.new(attributes)
+        # @result = HashWrapper.new(attributes)
+        @result = attributes
       end
 
       # Return document `_id` as `id`
