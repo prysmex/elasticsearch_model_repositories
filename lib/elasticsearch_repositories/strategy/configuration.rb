@@ -23,14 +23,16 @@ module ElasticsearchRepositories
       # Wraps the [index mappings](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html)
       #
       class Mappings
-        attr_accessor :options, :type
+        attr_accessor :type, :options, :strategy, :dynamic_fields_methods
 
         # @private
         TYPES_WITH_EMBEDDED_PROPERTIES = %w(object nested)
 
-        def initialize(type = nil, options={})
+        def initialize(type = nil, options={}, strategy=nil)
           @type    = type
           @options = options
+          @strategy = strategy
+          self.instance_variable_set('@dynamic_fields_methods', [])
           @mapping = {}
         end
 
@@ -58,17 +60,26 @@ module ElasticsearchRepositories
           self
         end
 
+        def register_dynamic_fields_method(method_name)
+           methods = self.instance_variable_get('@dynamic_fields_methods')
+           methods.push(method_name)
+           self.instance_variable_set('@dynamic_fields_methods', methods)
+        end
+
         def to_hash
-          if @type
+          hash = if @type
             { @type.to_sym => @options.merge( properties: @mapping ) }
           else
             @options.merge( properties: @mapping )
           end
+          dynamic_hash = dynamic_fields_methods.reduce({}){|h, name| h.merge(@strategy.host.send(name)) }
+          hash.merge(dynamic_hash)
         end
 
-        def as_json(options={})
+        def as_json
           to_hash
         end
+
       end
 
       module Methods
@@ -86,7 +97,7 @@ module ElasticsearchRepositories
   
         #index mappings
         def mappings(options={}, &block)
-          @cached_mapping ||= Mappings.new()
+          @cached_mapping ||= Mappings.new(nil, options, self)
   
           @cached_mapping.options.update(options) unless options.empty?
           if block_given?
@@ -96,22 +107,21 @@ module ElasticsearchRepositories
           end
         end
   
-        # This creates a hash that may be merged in runtime.
-        def dynamic_mappings_hash
-          mappings.to_hash
-        end
-  
         #index settings
-        def settings(options={}, &block)
-          @cached_setting ||= Settings.new()
-  
-          @cached_setting.options.update(options) unless options.empty?
+        def settings(settings={}, &block)
+          # settings = YAML.load(settings.read) if settings.respond_to?(:read)
+          @settings ||= Settings.new(settings)
+
+          @settings.settings.update(settings) unless settings.empty?
+
           if block_given?
-            @cached_setting.instance_eval(&block)
+            self.instance_eval(&block)
+            return self
           else
-            @cached_setting
+            @settings
           end
         end
+
       end
       
     end

@@ -9,7 +9,7 @@ module ElasticsearchRepositories
           {
             index_without_id: index_without_id,
             settings: settings.to_hash,
-            mappings: dynamic_mappings_hash,
+            mappings: mappings.to_hash,
             index: target_index_name(nil),
             es_query: {query: {match_all: {}}},
             es_query_options: {}
