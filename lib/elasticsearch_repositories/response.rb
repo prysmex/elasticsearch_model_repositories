@@ -1,7 +1,7 @@
 module ElasticsearchRepositories
   module Response
 
-      # Encapsulate the response returned from the Elasticsearch client
+      # Executes, then Encapsulate the response returned from the Elasticsearch client
       #
       # Implements Enumerable and forwards its methods to the {#results} object.
       #
@@ -30,7 +30,7 @@ module ElasticsearchRepositories
         # @return [Results]
         #
         def results
-          # @results ||= Results.new(strategy.instance_variable_get('@host'), self)
+          # @results ||= Results.new(strategy.host, self)
           @results ||= response['hits']['hits'].map { |hit| Result.new(hit) }
         end
 
@@ -38,8 +38,11 @@ module ElasticsearchRepositories
         #
         # @return [Records]
         #
+        #TODO should this class be deprecated and merge the Records
+        # logic into this class to prevent .records.records and
+        # have a similar api as results?
         def records(options = {})
-          @records ||= Records.new(strategy.instance_variable_get('@host'), self, options)
+          @records ||= Records.new(strategy.host, self, options)
         end
 
         # Returns the total number of hits
