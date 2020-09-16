@@ -6,16 +6,17 @@ module ElasticsearchRepositories
       adapter = Adapter.from_class(base)
       # puts base
       # puts adapter.importing_mixin
-      base.__send__ :include, adapter.importing_mixin
+      base.__send__ :extend, adapter.importing_mixin
+      base.__send__ :extend, self
     end
 
-    def self._call_reindex_iterators(*payload, &block)
+    def _call_reindex_iterators(*payload, &block)
       self.instance_variable_get('@indexing_strategies').each do |strategy|
         strategy.public_send(:reindexing_index_iterator, *payload, &block)
       end
     end
 
-    def self.reload_indices!(options={})
+    def reload_indices!(options={})
 
       required_options = [
         :batch_size, :index, :es_query, :es_query_options,
@@ -57,7 +58,11 @@ module ElasticsearchRepositories
           :type,
           :transform,
           :pipeline,
-          :import_db_query,
+          # :import_db_query,
+          :strategy,
+          :index_without_id,
+          :settings,
+          :mappings,
           :es_query,
           :es_query_options
         )
@@ -86,10 +91,10 @@ module ElasticsearchRepositories
     # When options[:force] is true, the index in deleted and recreated with
     # mappings and settings
     # import_db_query is a active_record query
-    def self._create_index_and_import_data(import_db_query, options)
+    def _create_index_and_import_data(import_db_query, options)
       error_count = 0
       strategy = options[:strategy]
-      index_name = option[:index_name]
+      index_name = options[:index]
 
       #this is required because import does not support settings
       # if force is true, the index in deleted and re-created
@@ -114,9 +119,7 @@ module ElasticsearchRepositories
         strategy: options[:strategy],
         transform: options[:transform],
         query: -> {
-          strategy.reindexing_includes_proc(
-            import_db_query
-          )
+          strategy.reindexing_includes_proc.call(import_db_query)
         }
       ) do |response|
           puts "#{(response['items'].size.to_f * 1000 / response['took']).round(0)}/s"
@@ -132,15 +135,15 @@ module ElasticsearchRepositories
 
     # verifies that an index contains the same amount of
     # documents as the database for a specific db and es query.
-    def self._verify_index_doc_count(import_db_query, options)
-      index_name = option[:index]
-      es_query = option[:es_query]
+    def _verify_index_doc_count(import_db_query, options)
+      index_name = options[:index]
+      es_query = options[:es_query]
 
       db_count = import_db_query
           .count
       sleep(2)
-      es_count = self
-          .search(es_query, option[:es_query_options])
+      es_count = options[:strategy]
+          .search(es_query, options[:es_query_options])
           .response.hits.total.value
       if db_count != es_count
         puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{es_query}"
@@ -150,7 +153,7 @@ module ElasticsearchRepositories
       db_count == es_count
     end
 
-    def self.import(options={}, &block)
+    def import(options={}, &block)
       errors       = []
       refresh      = options.delete(:refresh)   || false
       target_index = options.delete(:index)
@@ -181,7 +184,7 @@ module ElasticsearchRepositories
 
         params[:pipeline] = pipeline if pipeline
 
-        response = client.bulk params
+        response = strategy.client.bulk params
 
         yield response if block_given?
 
@@ -202,7 +205,7 @@ module ElasticsearchRepositories
       end
     end
 
-    def self.__batch_to_bulk(batch, strategy, transform)
+    def __batch_to_bulk(batch, strategy, transform)
       batch.map { |model| transform.call(model, strategy) }
     end
 

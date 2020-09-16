@@ -92,7 +92,7 @@ module ElasticsearchRepositories
         end
   
         #Used by index management module
-        def current_index
+        def current_index_name
         end
   
         #index mappings

@@ -90,14 +90,19 @@ module ElasticsearchRepositories
         #
         # @api private
         #
+        # Caching classes is not a good idea since the app reloads in development enviroment
         def __type_for_hit(hit)
-          @@__types ||= {}
-          key = hit[:_index]
+          # @@__types ||= {}
+          # key = hit[:_index]
 
-          @@__types[key] ||= begin
-            response.strategy.host.detect do |model|
-              model.to_s == hit._source[:type]
-            end
+          # @@__types[key] ||= begin
+          #   response.strategy.host.detect do |model|
+          #     model.to_s == hit._source[:type]
+          #   end
+          # end
+
+          response.strategy.host.detect do |model|
+            model.to_s == hit._source[:type]
           end
         end
 
