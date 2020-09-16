@@ -73,7 +73,8 @@ module ElasticsearchRepositories
             @options.merge( properties: @mapping )
           end
           dynamic_hash = dynamic_fields_methods.reduce({}){|h, name| h.merge(@strategy.host.send(name)) }
-          hash.merge(dynamic_hash)
+          hash[:properties] = hash[:properties].merge(dynamic_hash)
+          hash
         end
 
         def as_json
