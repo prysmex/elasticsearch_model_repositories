@@ -15,7 +15,7 @@ module ElasticsearchRepositories
           @settings
         end
 
-        def as_json(options={})
+        def as_json
           to_hash
         end
       end
@@ -66,15 +66,22 @@ module ElasticsearchRepositories
            self.instance_variable_set('@dynamic_fields_methods', methods)
         end
 
-        def to_hash
-          hash = if @type
+        def to_hash(dynamic_fields_args={})
+          base_hash = if @type
             { @type.to_sym => @options.merge( properties: @mapping ) }
           else
             @options.merge( properties: @mapping )
           end
-          dynamic_hash = dynamic_fields_methods.reduce({}){|h, name| h.merge(@strategy.host.send(name)) }
-          hash[:properties] = hash[:properties].merge(dynamic_hash)
-          hash
+          #merge dynamic mappings from registered dynamic_fields_methods
+          dynamic_hash = dynamic_fields_methods.reduce({}) do |h, name|
+            if @strategy.host.method(name).arity != 0
+              h.merge(@strategy.host.public_send(name, *dynamic_fields_args[name]))
+            else
+              h.merge(@strategy.host.public_send(name))
+            end
+          end
+          base_hash[:properties] = base_hash[:properties].merge(dynamic_hash)
+          base_hash
         end
 
         def as_json
@@ -95,9 +102,13 @@ module ElasticsearchRepositories
         #Used by index management module
         def current_index_name
         end
+
+        def mappings
+          @cached_mapping
+        end
   
         #index mappings
-        def mappings(options={}, &block)
+        def set_mappings(options={}, &block)
           @cached_mapping ||= Mappings.new(nil, options, self)
   
           @cached_mapping.options.update(options) unless options.empty?
@@ -107,19 +118,23 @@ module ElasticsearchRepositories
             @cached_mapping
           end
         end
+
+        def settings
+          @cached_settings
+        end
   
         #index settings
-        def settings(settings={}, &block)
+        def set_settings(settings={}, &block)
           # settings = YAML.load(settings.read) if settings.respond_to?(:read)
-          @settings ||= Settings.new(settings)
+          @cached_settings ||= Settings.new(settings)
 
-          @settings.settings.update(settings) unless settings.empty?
+          @cached_settings.settings.update(settings) unless settings.empty?
 
           if block_given?
             self.instance_eval(&block)
             return self
           else
-            @settings
+            @cached_settings
           end
         end
 
