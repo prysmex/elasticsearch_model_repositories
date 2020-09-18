@@ -7,7 +7,7 @@ module ElasticsearchRepositories
 
       # Register a new indexing strategy to the model
       # Name paramter is used if updating the strategy later on is desired
-      def register_strategy(strategy_klass, name=nil, &block)
+      def register_strategy(strategy_klass, name='main', &block)
         strategies = self.instance_variable_get('@indexing_strategies') || []
         strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
         if strategy
@@ -20,7 +20,7 @@ module ElasticsearchRepositories
       end
 
       # Update an indexing strategy by name
-      def update_strategy(name=nil, &block)
+      def update_strategy(name, &block)
         strategies = self.instance_variable_get('@indexing_strategies') || []
         strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
         if strategy
