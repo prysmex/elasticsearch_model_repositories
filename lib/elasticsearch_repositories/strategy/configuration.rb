@@ -74,10 +74,10 @@ module ElasticsearchRepositories
           end
           #merge dynamic mappings from registered dynamic_fields_methods
           dynamic_hash = dynamic_fields_methods.reduce({}) do |h, name|
-            if @strategy.host.method(name).arity != 0
-              h.merge(@strategy.host.public_send(name, *dynamic_fields_args[name]))
+            if @strategy.method(name).arity != 0
+              h.merge(@strategy.public_send(name, *dynamic_fields_args[name]))
             else
-              h.merge(@strategy.host.public_send(name))
+              h.merge(@strategy.public_send(name))
             end
           end
           base_hash[:properties] = base_hash[:properties].merge(dynamic_hash)
