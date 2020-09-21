@@ -3,9 +3,16 @@ module ElasticsearchRepositories
     module Indexing
 
       #method called by callbacks
-      #TODO add default options or send strategy instead of options
       def index_record_to_es(action, record)
-        record._index_document(action, {})
+        indexer_options = {
+          index: target_index_name(record),
+          mappings: mappings.to_hash,
+          settings: settings.to_hash,
+          id: record.id,
+          body: as_indexed_json(record),
+          index_without_id: index_without_id
+        }
+        record._index_document(action, indexer_options)
       end
 
     end

@@ -66,8 +66,8 @@ module ElasticsearchRepositories
         end
       end
 
-      def host
-        strategies.map { |s| s.host }
+      def host_class
+        strategies.map { |s| s.host_class }
       end
 
     end

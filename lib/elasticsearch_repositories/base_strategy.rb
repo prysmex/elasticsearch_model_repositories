@@ -16,11 +16,11 @@ module ElasticsearchRepositories
     include ElasticsearchRepositories::Strategy::Serializing
 
     attr_reader :client
-    attr_reader :host
+    attr_reader :host_class
     attr_reader :name
       
     def initialize(klass, client, name=nil, &block)
-      @host = klass
+      @host_class = klass
       @client = client
       @name = name
       self.instance_eval(&block) if block_given?

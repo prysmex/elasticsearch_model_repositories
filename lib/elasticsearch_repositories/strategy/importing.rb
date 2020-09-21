@@ -7,6 +7,7 @@ module ElasticsearchRepositories
         yield *[
           where(''),
           {
+            strategy: self,
             index_without_id: index_without_id,
             settings: settings.to_hash,
             mappings: mappings.to_hash,

@@ -69,7 +69,8 @@ module ElasticsearchRepositories
         end
       end
   
-      def _index_document(action, strategy)
+      def _index_document(action, options)
+        raise NotImplementedError('need to implement own _index_document method')
       end
 
     end

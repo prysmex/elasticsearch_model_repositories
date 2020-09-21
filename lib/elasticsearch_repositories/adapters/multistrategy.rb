@@ -96,12 +96,12 @@ module ElasticsearchRepositories
           # key = hit[:_index]
 
           # @@__types[key] ||= begin
-          #   response.strategy.host.detect do |model|
+          #   response.strategy.host_class.detect do |model|
           #     model.to_s == hit._source[:type]
           #   end
           # end
 
-          response.strategy.host.detect do |model|
+          response.strategy.host_class.detect do |model|
             model.to_s == hit._source[:type]
           end
         end
