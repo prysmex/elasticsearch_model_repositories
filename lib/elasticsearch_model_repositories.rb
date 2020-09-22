@@ -8,6 +8,7 @@ require_relative 'elasticsearch_repositories/version'
 require_relative 'elasticsearch_repositories/hash_wrapper'
 require_relative 'elasticsearch_repositories/importing'
 require_relative 'elasticsearch_repositories/model'
+require_relative 'elasticsearch_repositories/registry'
 
 require_relative 'elasticsearch_repositories/strategy/configuration'
 require_relative 'elasticsearch_repositories/strategy/importing'

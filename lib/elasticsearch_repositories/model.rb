@@ -8,6 +8,11 @@ module ElasticsearchRepositories
       # Register a new indexing strategy to the model
       # Name paramter is used if updating the strategy later on is desired
       def register_strategy(strategy_klass, name='main', &block)
+
+        if self.is_a?(Class) && !::ElasticsearchRepositories::ClassRegistry.all.map(&:to_s).include?(self.name)
+          ::ElasticsearchRepositories::ClassRegistry.add(self)
+        end
+
         strategies = self.instance_variable_get('@indexing_strategies') || []
         strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
         if strategy
