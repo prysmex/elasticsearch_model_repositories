@@ -35,7 +35,7 @@ module ElasticsearchRepositories
       # Returns the hit IDs
       #
       def ids
-        response.response['hits']['hits'].map { |hit| hit['_id'] }
+        response.response['hits']['hits'].map { |hit| hit['_source']['id'] || hit['_id'] }
       end
 
       # Returns the {Results} collection

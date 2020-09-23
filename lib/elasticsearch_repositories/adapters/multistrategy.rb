@@ -14,7 +14,7 @@ module ElasticsearchRepositories
           records_by_type = __records_by_type
 
           records = response.response["hits"]["hits"].map do |hit|
-            records_by_type[ __type_for_hit(hit) ][ hit[:_id] ]
+            records_by_type[ __type_for_hit(hit) ][ hit[:_source][:id] || [:_id] ]
           end
 
           records.compact
@@ -81,7 +81,7 @@ module ElasticsearchRepositories
           response.response["hits"]["hits"].each do |hit|
             type = __type_for_hit(hit)
             ids_by_type[type] ||= []
-            ids_by_type[type] << hit[:_id]
+            ids_by_type[type] << hit[:_source][:id] || hit[:_id]
           end
           ids_by_type
         end
