@@ -40,7 +40,7 @@ module ElasticsearchRepositories
               if !self.order_values.present?
                 @records.sort_by do |record|
                   hits.index do |hit|
-                    (hit['_source']['id'] || hit['_id']).to_s == record.id.to_s
+                    (hit.dig(:_source, :id) || hit['_id']).to_s == record.id.to_s
                   end
                 end
               else

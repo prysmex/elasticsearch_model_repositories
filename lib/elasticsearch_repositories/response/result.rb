@@ -20,7 +20,7 @@ module ElasticsearchRepositories
       # Return document `_id` as `id`
       #
       def id
-        @result['_source']['id'] || @result['_id']
+        @result.dig(:_source, :id)&.to_s || @result['_id']
       end
 
       # Return document `_type` as `_type`
