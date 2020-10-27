@@ -67,25 +67,28 @@ module ElasticsearchRepositories
         end
 
         def to_hash(dynamic_fields_args={})
-          base_hash = if @type
+          base_hash = _to_hash_without_dynamic
+          dynamic_hash = _to_hash_only_dynamic(dynamic_fields_args)
+          base_hash[:properties] = base_hash[:properties].merge(dynamic_hash)
+          base_hash
+        end
+
+        def _to_hash_without_dynamic
+          if @type
             { @type.to_sym => @options.merge( properties: @mapping ) }
           else
             @options.merge( properties: @mapping )
           end
-          #merge dynamic mappings from registered dynamic_fields_methods
-          dynamic_hash = dynamic_fields_methods.reduce({}) do |h, name|
+        end
+
+        def _to_hash_only_dynamic(dynamic_fields_args)
+          dynamic_fields_methods.reduce({}) do |h, name|
             if @strategy.method(name).arity != 0
               h.merge(@strategy.public_send(name, *dynamic_fields_args[name]))
             else
               h.merge(@strategy.public_send(name))
             end
           end
-          base_hash[:properties] = base_hash[:properties].merge(dynamic_hash)
-          base_hash
-        end
-
-        def as_json
-          to_hash
         end
 
       end
