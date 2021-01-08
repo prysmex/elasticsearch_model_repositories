@@ -38,7 +38,7 @@ class Simple < ElasticsearchRepositories::BaseStrategy
     search_index_name
   end
 
-  # The name of the index (if mu)
+  # The name of the index when searching data
   def search_index_name
     host_class._base_index_name # in this case, host_class is Person
   end
