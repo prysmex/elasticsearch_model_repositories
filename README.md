@@ -31,21 +31,55 @@ Or install it yourself as:
 Lets create our first indexing strategy by extending `ElasticsearchRepositories::BaseStrategy`
 
 ```ruby
+class Simple < ElasticsearchRepositories::BaseStrategy
+
+  # The index_name for a specific record (used for update/destroy)
+  def target_index_name(record)
+    search_index_name
+  end
+
+  # The name of the index (if mu)
+  def search_index_name
+    host_class._base_index_name # in this case, host_class is Person
+  end
+
+  # The name of the index to use when creating a new record (create)
+  def current_index_name
+    search_index_name
+  end
+
+end
+```
+
+Now lets register this strategy into a model.
+It is important to add the following lines to your model that provide the methods for registering strategies, indexing, reindexing, and some other utilities.
+
+```ruby
+  extend ElasticsearchRepositories::Model::ClassMethods
+  # register_strategy
+  # update_strategy
+  # default_indexing_strategy
+  # _to_index_model_name
+  # _base_index_name
+  # delete_all_klass_indices
+  include ElasticsearchRepositories::Model::InstanceMethods
+  # index_to_all_indices
+  # _index_document
+  include ElasticsearchRepositories::Importing
+  # _call_reindex_iterators
+  # reload_indices!
+  # _create_index_and_import_data
+  # _verify_index_doc_count
+  # import
+  # __batch_to_bulk
+```
+
+```ruby
 class Person
 
   extend ElasticsearchRepositories::Model::ClassMethods
   include ElasticsearchRepositories::Model::InstanceMethods
   include ElasticsearchRepositories::Importing
-
-  register_strategy Searchable::Strategies::Simple do
-    set_mappings(dynamic: 'true') do
-      # your mappings
-    end
-    
-    def as_indexed_json(record)
-      super # you can customize this for each class
-    end
-  end
 
   after_commit -> (record) {
     _call_indexing_methods('create', record)
@@ -59,49 +93,221 @@ class Person
     _call_indexing_methods('delete', record)
   }, on: :destroy
 
+  # You can register as many strategies as you want to a model.
+  # By adding code into the block, you can override methods for this specific
+  # strategy instance
+  register_strategy Simple do
+    
+    set_mappings(dynamic: 'true') do
+      # your mappings for this class
+    end
+    
+    def as_indexed_json(record)
+      # customize serialization for this class 
+      super.merge(record.as_json)
+    end
+
+  end
+
   def _call_indexing_methods(event_name, record)
     self.class.indexing_strategies.each do |strategy|
       strategy.public_send(:index_record_to_es, event_name, record)
     end
   end
 
+  # Define this method in case you want to customize index naming
   def self._base_index_name
     "#{Rails.env}_#{self.name.underscore.dasherize.pluralize}_"
   end
 
-end
-
-class Simple < ElasticsearchRepositories::BaseStrategy
-
-  #############
-  #index naming
-  #############
-    
-  # The index_name for a specific record (used when create/update/destroy)
-  def target_index_name(record)
-    search_index_name
-  end
-
-  # The name of the index (if mu)
-  def search_index_name
-    host_class._base_index_name # in this case, host_class is Person
-  end
-
-  def current_index_name
-    search_index_name
-  end
-
-  ##############
-  #serialization
-  ##############
-
-  # default serialization
-  def as_indexed_json(record)
-    record.as_json
+  # This method is called by the gem and needs to be implemented
+  # Here is where you actually index to ES, you may call a Sidekiq worker
+  # that asyncronously indexes the record.
+  def _index_document(action, options={})
+    SomeIndexerWorker.perform_later(
+      action,
+      options
+    )
   end
 
 end
 ```
+
+And there we have it, we have registered our `Simple` strategy into our model and used ActiveRecord's hooks to call the indexing methods.
+
+To keep our code DRY lets create a concern that can be added to our models that we want to index to elasticsearch.
+
+```ruby
+module Searchable
+
+  class_methods do
+    include ElasticsearchRepositories::Model::ClassMethods
+    
+    def self._base_index_name
+      "#{Rails.env}_#{self.name.underscore.dasherize.pluralize}_"
+    end
+  end
+
+  included do
+      include ElasticsearchRepositories::Model::InstanceMethods
+      include ElasticsearchRepositories::Importing
+    after_commit -> (record) {
+      _call_indexing_methods('create', record)
+    }, on: :create
+
+    after_commit -> (record) {
+      _call_indexing_methods('update', record)
+    }, on: :update
+
+    after_commit -> (record) {
+      _call_indexing_methods('delete', record)
+    }, on: :destroy
+
+    def _call_indexing_methods(event_name, record)
+      self.class.indexing_strategies.each do |strategy|
+        strategy.public_send(:index_record_to_es, event_name, record)
+      end
+    end
+
+    def _index_document(action, options={})
+      SomeIndexerWorker.perform_later(
+        action,
+        options
+      )
+    end
+
+  end
+
+end
+```
+
+We then can add this concern to our model
+```ruby
+class Person
+  include Searchable
+
+  register_strategy Simple do
+    
+    set_mappings(dynamic: 'true') do
+      # your mappings for this class
+    end
+    
+    def as_indexed_json(record)
+      # customize serialization for this class 
+      super.merge(record.as_json)
+    end
+
+  end
+
+end
+```
+
+Now lets create an indexing strategy that creates yearly indices
+```ruby
+class Yearly < ElasticsearchRepositories::BaseStrategy
+
+  #############
+  #index naming
+  #############
+
+  # Returns an index name for dated indices
+  def _build_dated_index_name(date)
+    host_class._base_index_name + "#{date.year}"
+  end
+
+  # When a search is executed, replace everything after the first digit on the index_name 
+  # with * so all the data is reachable.
+  def search_index_name
+    _build_dated_index_name(Time.now).sub(/\d.*/, '*')
+  end
+
+  # Returns the index name of a particular db record
+  def target_index_name(record)
+    _build_dated_index_name(record.created_at)
+  end
+
+  def current_index_name
+    _build_dated_index_name(Time.now)
+  end
+
+  ##########
+  #importing
+  ##########
+
+  # Since we have special business logic of how to index the data (divided into yearly indices) we need to override how the data gets reindexed.
+  def reindexing_index_iterator(start_time = nil, end_time = nil)
+
+    start_time = (start_time || host_class.minimum('created_at'))&.beginning_of_year
+    end_time = (end_time || host_class.maximum('created_at'))&.end_of_year
+    if start_time && end_time
+      number_of_years = (end_time.year)-(start_time.year) + 1
+      (0...number_of_years).each do |month|
+        _start = start_time + month.years
+        _end = _start + 1.years
+
+        # this is the important part, you need to yield a splatted array
+        # with the following parameters:
+        # 1) AR relation object with query to fetch records to import
+        # 2) Indexing options object
+        # 3) ??
+        yield *[
+          host_class.where('created_at >= ? and created_at < ?', _start, _end),
+          {
+            strategy: self,
+            index: _build_dated_index_name(_start),
+            index_without_id: index_without_id,
+            settings: settings.to_hash,
+            mappings: mappings.to_hash,
+            es_query: { query: { bool:{ filter: [ range: { created_at: { gte: _start, lt: _end  } } ] } } },
+            es_query_options: {}
+          },
+          [_start, _end] # ToDo: Check if this parameter is really used
+        ]
+      end
+    end
+  end
+
+end
+```
+
+Now lets add this Yearly strategy into our model
+
+```ruby
+class Person
+  include Searchable
+
+  register_strategy Simple do
+    
+    set_mappings(dynamic: 'true') do
+      # your mappings for this class
+    end
+    
+    def as_indexed_json(record)
+      # customize serialization for this class 
+      super.merge(record.as_json)
+    end
+
+  end
+
+  register_strategy Yearly do
+    
+    set_mappings(dynamic: 'true') do
+      # your mappings for this class
+    end
+    
+    def as_indexed_json(record)
+      # customize serialization for this class 
+      super.merge(record.as_json)
+    end
+
+  end
+
+end
+```
+
+
+
+
 
 ## Development
 
