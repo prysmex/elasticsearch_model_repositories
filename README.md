@@ -202,7 +202,33 @@ class Person
 end
 ```
 
-Now lets create an indexing strategy that creates yearly indices
+Now that we have our model correctly setup, lets explore some of the methods we have available.
+```ruby
+# get the instance of the strategy for the class
+simple_indexing_strategy = Person.indexing_strategies.first
+#or
+simple_indexing_strategy = Person.default_indexing_strategy
+
+##########
+#indexing#
+##########
+Person.create({name: 'Yoda'}) # this will create the record on ES with all registered strategies
+Person.update({name: 'John'}) # this will update the record on ES with all registered strategies
+Person.destroy # this will delete the record from ES with all registered strategies
+Person.first.index_to_all_indices # will index (create/update) the document with all registered strategies
+simple_indexing_strategy.index_record_to_es('update', Person.first) # to only this specific strategy
+
+# to serialize the record with a specific strategy
+simple_indexing_strategy.as_indexed_json(Person.first) # returns the serialized json
+
+simple_indexing_strategy.search({query: {match_all: {}}})
+
+#reload all registered indices
+Person.reload_indices!({})
+```
+
+
+Now lets create an indexing strategy that uses yearly indices
 ```ruby
 class Yearly < ElasticsearchRepositories::BaseStrategy
 
@@ -305,7 +331,13 @@ class Person
 end
 ```
 
-
+### Multimodel searching
+```ruby
+location_response = ElasticsearchRepositories.search(
+  {query: {match_all: {}}}, #elasticsearch query
+  [Person].map(&:default_indexing_strategy) #array of strategies to search
+)
+```
 
 
 
