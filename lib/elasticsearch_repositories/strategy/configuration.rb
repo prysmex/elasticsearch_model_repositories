@@ -23,16 +23,16 @@ module ElasticsearchRepositories
       # Wraps the [index mappings](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html)
       #
       class Mappings
-        attr_accessor :type, :options, :strategy, :dynamic_fields_methods
+        attr_accessor :type, :options, :strategy, :dynamic_properties_methods
 
         # @private
         TYPES_WITH_EMBEDDED_PROPERTIES = %w(object nested)
 
         def initialize(type = nil, options={}, strategy=nil)
+          self.instance_variable_set('@dynamic_properties_methods', [])
           @type    = type
           @options = options
           @strategy = strategy
-          self.instance_variable_set('@dynamic_fields_methods', [])
           @mapping = {}
         end
 
@@ -60,35 +60,34 @@ module ElasticsearchRepositories
           self
         end
 
-        def register_dynamic_fields_method(method_name)
-           methods = self.instance_variable_get('@dynamic_fields_methods')
-           methods.push(method_name)
-           self.instance_variable_set('@dynamic_fields_methods', methods)
+        def register_dynamic_properties_method(method_name, &block)
+          define_singleton_method(method_name, &block) if block_given?
+
+          methods = self.instance_variable_get('@dynamic_properties_methods')
+          methods.push(method_name).uniq
+          self.instance_variable_set('@dynamic_properties_methods', methods)
         end
 
-        def to_hash(dynamic_fields_args={})
-          base_hash = _to_hash_without_dynamic
-          dynamic_hash = _to_hash_only_dynamic(dynamic_fields_args)
-          base_hash[:properties] = base_hash[:properties].merge(dynamic_hash)
-          base_hash
-        end
+        def to_hash(dynamic_properties_methods_args={})
+          methods_to_skip = dynamic_properties_methods_args.delete(:_dynamic_properties_methods_to_skip) || []
 
-        def _to_hash_without_dynamic
-          if @type
+          # static properties
+          mappings_hash = if @type
             { @type.to_sym => @options.merge( properties: @mapping ) }
           else
             @options.merge( properties: @mapping )
           end
-        end
 
-        def _to_hash_only_dynamic(dynamic_fields_args)
-          dynamic_fields_methods.reduce({}) do |h, name|
-            if @strategy.method(name).arity != 0
-              h.merge(@strategy.public_send(name, *dynamic_fields_args[name]))
-            else
-              h.merge(@strategy.public_send(name))
-            end
+          #prevent pollution of @mapping since it is cached
+          mappings_hash = Marshal.load(Marshal.dump(mappings_hash))
+
+          #dynamic properties
+          dynamic_properties_methods.each do |method_name|
+            next if methods_to_skip.include?(method_name)
+            self.public_send(method_name, mappings_hash, *dynamic_properties_methods_args[method_name])
           end
+
+          mappings_hash
         end
 
       end
