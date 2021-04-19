@@ -3,14 +3,12 @@ PATH
   specs:
     elasticsearch_model_repositories (0.2.0)
       elasticsearch (= 7.9.0)
-      hashie
 
 GEM
   remote: https://rubygems.org/
   specs:
     ansi (1.5.0)
     builder (3.2.4)
-    connection_pool (2.2.5)
     elasticsearch (7.9.0)
       elasticsearch-api (= 7.9.0)
       elasticsearch-transport (= 7.9.0)
@@ -19,19 +17,15 @@ GEM
     elasticsearch-transport (7.9.0)
       faraday (~> 1)
       multi_json
-    excon (0.80.1)
-    faraday (1.4.0)
-      faraday-excon (~> 1.0)
+    faraday (1.4.1)
+      faraday-excon (~> 1.1)
       faraday-net_http (~> 1.0)
-      faraday-net_http_persistent (~> 1.0)
+      faraday-net_http_persistent (~> 1.1)
       multipart-post (>= 1.2, < 3)
       ruby2_keywords (>= 0.0.4)
-    faraday-excon (1.0.0)
-      excon (>= 0.27.4)
+    faraday-excon (1.1.0)
     faraday-net_http (1.0.1)
-    faraday-net_http_persistent (1.0.3)
-      net-http-persistent (>= 3.1)
-    hashie (4.1.0)
+    faraday-net_http_persistent (1.1.0)
     minitest (5.14.2)
     minitest-reporters (1.4.3)
       ansi
@@ -40,8 +34,6 @@ GEM
       ruby-progressbar
     multi_json (1.15.0)
     multipart-post (2.1.1)
-    net-http-persistent (4.0.1)
-      connection_pool (~> 2.2)
     rake (13.0.1)
     ruby-progressbar (1.11.0)
     ruby2_keywords (0.0.4)
