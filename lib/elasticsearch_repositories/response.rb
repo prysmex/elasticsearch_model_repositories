@@ -10,6 +10,7 @@ module ElasticsearchRepositories
 
         include Enumerable
 
+        #ToDo 'delegate' is rails specific
         delegate :each, :empty?, :size, :slice, :[], :to_ary, to: :results
 
         def initialize(strategy, search, options={})
@@ -22,7 +23,7 @@ module ElasticsearchRepositories
         # @return [Hash]
         #
         def response
-          @response ||= HashWrapper.new(search.execute!)
+          search.execute!
         end
 
         # Returns the collection of "hits" from Elasticsearch
@@ -30,7 +31,7 @@ module ElasticsearchRepositories
         # @return [Results]
         #
         def results
-          @results ||= response['hits']['hits'].map { |hit| Result.new(hit) }
+          @results ||= response.dig('hits', 'hits').map { |hit| Result.new().merge! hit }
         end
 
         # Returns the collection of records from the database
@@ -44,29 +45,26 @@ module ElasticsearchRepositories
         # Returns the total number of hits
         #
         def total
-          if response['hits']['total'].respond_to?(:keys)
-            response['hits']['total']['value']
-          else
-            response['hits']['total']
-          end
+          total = response.dig('hits', 'total')
+          total.respond_to?(:each_pair) ? total['value'] : total
         end
 
         # Returns the max_score
         #
         def max_score
-          response['hits']['max_score']
+          response.dig('hits', 'max_score')
         end
 
         # Returns the "took" time
         #
         def took
-          raw_response['took']
+          response['took']
         end
 
         # Returns whether the response timed out
         #
         def timed_out
-          raw_response['timed_out']
+          response['timed_out']
         end
 
         # Returns the statistics on shards
@@ -75,21 +73,18 @@ module ElasticsearchRepositories
           @shards ||= response['_shards']
         end
 
-        # Returns a Hashie::Mash of the aggregations
+        # Returns aggregations
         #
         def aggregations
-          @aggregations ||= Aggregations.new(raw_response['aggregations'])
+          @aggregations ||= Aggregations.new().merge! response['aggregations']
         end
 
-        # Returns a Hashie::Mash of the suggestions
+        # Returns suggestions
         #
         def suggestions
-          @suggestions ||= Suggestions.new(raw_response['suggest'])
+          @suggestions ||= Suggestions.new().merge! response['suggest']
         end
-
-        def raw_response
-          @raw_response ||= @response ? @response.to_hash : search.execute!
-        end
+        
       end
 
   end

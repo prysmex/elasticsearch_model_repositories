@@ -13,12 +13,11 @@ module ElasticsearchRepositories
 
       attr_accessor :options
 
-      attr_reader :klass, :response, :raw_response
+      attr_reader :klass, :response
 
       def initialize(klass, response, options={})
         
         @klass = klass
-        @raw_response = response
         @response = response
 
         # Include module provided by the adapter in the singleton class ("metaclass")
@@ -35,7 +34,7 @@ module ElasticsearchRepositories
       # Returns the hit IDs
       #
       def ids
-        response.response['hits']['hits'].map { |hit| hit.dig(:_source, :id)&.to_s || hit['_id'] }
+        response.results.map(&:id)
       end
 
       # Returns the {Results} collection

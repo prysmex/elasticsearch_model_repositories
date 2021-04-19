@@ -144,7 +144,7 @@ module ElasticsearchRepositories
       sleep(2)
       es_count = options[:strategy]
           .search(es_query, options[:es_query_options].merge(index: index_name))
-          .response.hits.total.value
+          .response.dig('hits', 'total', 'value')
       if db_count != es_count
         puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{es_query}"
       else

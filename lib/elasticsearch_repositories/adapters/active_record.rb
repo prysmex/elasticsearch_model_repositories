@@ -27,7 +27,7 @@ module ElasticsearchRepositories
           # Re-order records based on the order from Elasticsearch hits
           # by redefining `to_a`, unless the user has called `order()`
           #
-          sql_records.instance_exec(response.response['hits']['hits']) do |hits|
+          sql_records.instance_exec(response.results) do |hits|
             ar_records_method_name = :to_a
             ar_records_method_name = :records if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 5
 
@@ -40,7 +40,7 @@ module ElasticsearchRepositories
               if !self.order_values.present?
                 @records.sort_by do |record|
                   hits.index do |hit|
-                    (hit.dig(:_source, :id) || hit['_id']).to_s == record.id.to_s
+                    hit.id == record.id.to_s
                   end
                 end
               else
