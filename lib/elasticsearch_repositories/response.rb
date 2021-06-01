@@ -16,6 +16,8 @@ module ElasticsearchRepositories
         def initialize(strategy, search, options={})
           @strategy     = strategy
           @search       = search
+          @use_cache    = options[:use_cache] || true
+          @cache        = {}
         end
 
         # Returns the Elasticsearch response
@@ -23,7 +25,9 @@ module ElasticsearchRepositories
         # @return [Hash]
         #
         def response
-          search.execute!
+          with_cache('response') do
+            search.execute!
+          end
         end
 
         # Returns the collection of "hits" from Elasticsearch
@@ -31,7 +35,9 @@ module ElasticsearchRepositories
         # @return [Results]
         #
         def results
-          @results ||= response.dig('hits', 'hits').map { |hit| Result.new().merge! hit }
+          with_cache('results') do
+            response.dig('hits', 'hits').map { |hit| Result.new().merge! hit }
+          end
         end
 
         # Returns the collection of records from the database
@@ -39,7 +45,9 @@ module ElasticsearchRepositories
         # @return [Records]
         #
         def records(options = {})
-          @records ||= Records.new(strategy.host_class, self, options)
+          with_cache('records') do
+            Records.new(strategy.host_class, self, options)
+          end
         end
 
         # Returns the total number of hits
@@ -70,19 +78,37 @@ module ElasticsearchRepositories
         # Returns the statistics on shards
         #
         def shards
-          @shards ||= response['_shards']
+          response['_shards']
         end
 
         # Returns aggregations
         #
         def aggregations
-          @aggregations ||= Aggregations.new().merge! response['aggregations']
+          with_cache('aggregations') do
+            Aggregations.new().merge! response['aggregations']
+          end
         end
 
         # Returns suggestions
         #
         def suggestions
-          @suggestions ||= Suggestions.new().merge! response['suggest']
+          with_cache('suggestions') do
+            Suggestions.new().merge! response['suggest']
+          end
+        end
+
+        # Calls block when passed variable is nil or when @use_cache is true
+        #
+        def with_cache(key)
+          return @cache[key] if @cache[key] && @use_cache
+
+          @cache[key] = yield
+        end
+
+        # Clears all cache
+        #
+        def clear_cache!
+          @cache.clear
         end
         
       end

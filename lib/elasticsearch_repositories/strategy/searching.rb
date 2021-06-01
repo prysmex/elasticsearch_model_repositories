@@ -48,9 +48,9 @@ module ElasticsearchRepositories
       end
   
       module Methods
-        def search(query_or_payload, options={})
+        def search(query_or_payload, options = {})
           search = SearchRequest.new(self, query_or_payload, options)
-          ElasticsearchRepositories::Response::Response.new(self, search)
+          ElasticsearchRepositories::Response::Response.new(self, search, options)
         end
       end
   

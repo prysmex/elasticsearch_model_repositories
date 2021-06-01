@@ -52,7 +52,7 @@ module ElasticsearchRepositories
     def search(query_or_payload, strategies=[], options={})
       wrapper = ElasticsearchRepositories::Multistrategy::MultistrategyWrapper.new(strategies)
       search = ElasticsearchRepositories::Strategy::Searching::SearchRequest.new(wrapper, query_or_payload, options)
-      ElasticsearchRepositories::Response::Response.new(wrapper, search)
+      ElasticsearchRepositories::Response::Response.new(wrapper, search, options)
     end
 
     # Yield self to allow configuing in a block
