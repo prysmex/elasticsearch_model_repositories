@@ -34,6 +34,7 @@ module ElasticsearchRepositories
           @options = options
           @strategy = strategy
           @mapping = {}
+          @runtime_fields = {}
         end
 
         def indexes(name, options={}, &block)
@@ -60,6 +61,10 @@ module ElasticsearchRepositories
           self
         end
 
+        def runtime_field(name, options)
+          @runtime_fields[name] = options
+        end
+
         def register_dynamic_properties_method(method_name, &block)
           define_singleton_method(method_name, &block) if block_given?
 
@@ -68,22 +73,18 @@ module ElasticsearchRepositories
           self.instance_variable_set('@dynamic_properties_methods', methods)
         end
 
-        def to_hash(dynamic_properties_methods_args={})
-          methods_to_skip = dynamic_properties_methods_args.delete(:_dynamic_properties_methods_to_skip) || []
+        def to_hash(_dynamic_properties_methods_args: [], **dynamic_properties_methods_args)
 
           # static properties
-          mappings_hash = if @type
-            { @type.to_sym => @options.merge( properties: @mapping ) }
-          else
-            @options.merge( properties: @mapping )
-          end
+          mappings_hash = {properties: @mapping, runtime: @runtime_fields}
+          mappings_hash = { @type.to_sym => mappings_hash } if @type
 
           #prevent pollution of @mapping since it is cached
           mappings_hash = Marshal.load(Marshal.dump(mappings_hash))
 
-          #dynamic properties
+          # support dynamic properties
           dynamic_properties_methods.each do |method_name|
-            next if methods_to_skip.include?(method_name)
+            next if _dynamic_properties_methods_args.include?(method_name)
             self.public_send(method_name, mappings_hash, *dynamic_properties_methods_args[method_name])
           end
 
