@@ -1,7 +1,7 @@
 module ElasticsearchRepositories
   module Response
 
-    class Aggregation < ::Hash
+    class Aggregations < ::Hash
     end
 
   end

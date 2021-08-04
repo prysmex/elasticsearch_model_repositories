@@ -19,7 +19,7 @@ module ElasticsearchRepositories
     def reload_indices!(options={})
 
       required_options = [
-        :batch_size, :index, :es_query, :es_query_options,
+        :batch_size, :index, :es_query,# :es_query_options,
         :strategy, :settings, :mappings
       ]
 
@@ -143,8 +143,11 @@ module ElasticsearchRepositories
           .count
       sleep(2)
       es_count = options[:strategy]
-          .search(es_query, options[:es_query_options].merge(index: index_name))
-          .response.dig('hits', 'total', 'value')
+          .client
+          .count({
+            body: es_query,
+            index: index_name
+          })['count']
       if db_count != es_count
         puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{es_query}"
       else

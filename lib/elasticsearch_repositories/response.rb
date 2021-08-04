@@ -85,7 +85,7 @@ module ElasticsearchRepositories
         #
         def aggregations
           with_cache('aggregations') do
-            Aggregations.new().merge! response['aggregations']
+            Aggregations.new().merge! (response['aggregations'] || {})
           end
         end
 
@@ -93,7 +93,7 @@ module ElasticsearchRepositories
         #
         def suggestions
           with_cache('suggestions') do
-            Suggestions.new().merge! response['suggest']
+            Suggestions.new().merge! (response['suggest'] || {})
           end
         end
 
