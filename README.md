@@ -20,11 +20,15 @@ gem 'elasticsearch_model_repositories'
 
 And then execute:
 
-    $ bundle
+```ruby
+bundle
+```
 
 Or install it yourself as:
 
-    $ gem install elasticsearch_model_repositories
+```ruby
+gem install elasticsearch_model_repositories
+```
 
 ## Usage
 
@@ -51,35 +55,26 @@ class Simple < ElasticsearchRepositories::BaseStrategy
 end
 ```
 
+Here is a list of methods that you may want to consider overriding on your custom strategy:
+
+- target_index_name
+- search_index_name
+- current_index_name
+- reindexing_index_iterator
+- index_without_id
+- as_indexed_json
+
 Now lets register this strategy into a model.
 It is important to add the following lines to your model that provide the methods for registering strategies, indexing, reindexing, and some other utilities.
 
 ```ruby
-  extend ElasticsearchRepositories::Model::ClassMethods
-  # register_strategy
-  # update_strategy
-  # default_indexing_strategy
-  # _to_index_model_name
-  # _base_index_name
-  # delete_all_klass_indices
-  include ElasticsearchRepositories::Model::InstanceMethods
-  # index_to_all_indices
-  # _index_document
-  include ElasticsearchRepositories::Importing
-  # _call_reindex_iterators
-  # reload_indices!
-  # _create_index_and_import_data
-  # _verify_index_doc_count
-  # import
-  # __batch_to_bulk
+  include ElasticsearchRepositories::Model
 ```
 
 ```ruby
 class Person
 
-  extend ElasticsearchRepositories::Model::ClassMethods
-  include ElasticsearchRepositories::Model::InstanceMethods
-  include ElasticsearchRepositories::Importing
+  include ElasticsearchRepositories::Model
 
   after_commit -> (record) {
     _call_indexing_methods('create', record)
@@ -97,11 +92,11 @@ class Person
   # By adding code into the block, you can override methods for this specific
   # strategy instance
   register_strategy Simple do
-    
+
     set_mappings(dynamic: 'true') do
       # your mappings for this class
     end
-    
+
     def as_indexed_json(record)
       # customize serialization for this class 
       super.merge(record.as_json)
@@ -142,15 +137,15 @@ module Searchable
 
   class_methods do
     include ElasticsearchRepositories::Model::ClassMethods
-    
+
     def self._base_index_name
       "#{Rails.env}_#{self.name.underscore.dasherize.pluralize}_"
     end
   end
 
   included do
-      include ElasticsearchRepositories::Model::InstanceMethods
-      include ElasticsearchRepositories::Importing
+    include ElasticsearchRepositories::Model::InstanceMethods
+
     after_commit -> (record) {
       _call_indexing_methods('create', record)
     }, on: :create
@@ -175,25 +170,25 @@ module Searchable
         options
       )
     end
-
   end
 
 end
 ```
 
 We then can add this concern to our model
+
 ```ruby
 class Person
   include Searchable
 
   register_strategy Simple do
-    
+
     set_mappings(dynamic: 'true') do
       # your mappings for this class
     end
-    
+
     def as_indexed_json(record)
-      # customize serialization for this class 
+      # customize serialization for this class
       super.merge(record.as_json)
     end
 
@@ -203,6 +198,7 @@ end
 ```
 
 Now that we have our model correctly setup, lets explore some of the methods we have available.
+
 ```ruby
 # get the instance of the strategy for the class
 simple_indexing_strategy = Person.indexing_strategies.first
@@ -227,8 +223,8 @@ simple_indexing_strategy.search({query: {match_all: {}}})
 Person.reload_indices!({})
 ```
 
-
 Now lets create an indexing strategy that uses yearly indices
+
 ```ruby
 class Yearly < ElasticsearchRepositories::BaseStrategy
 
@@ -303,11 +299,11 @@ class Person
   include Searchable
 
   register_strategy Simple do
-    
+
     set_mappings(dynamic: 'true') do
       # your mappings for this class
     end
-    
+
     def as_indexed_json(record)
       # customize serialization for this class 
       super.merge(record.as_json)
@@ -316,11 +312,11 @@ class Person
   end
 
   register_strategy Yearly do
-    
+
     set_mappings(dynamic: 'true') do
       # your mappings for this class
     end
-    
+
     def as_indexed_json(record)
       # customize serialization for this class 
       super.merge(record.as_json)
@@ -332,14 +328,13 @@ end
 ```
 
 ### Multimodel searching
+
 ```ruby
 location_response = ElasticsearchRepositories.search(
   {query: {match_all: {}}}, #elasticsearch query
   [Person].map(&:default_indexing_strategy) #array of strategies to search
 )
 ```
-
-
 
 ## Development
 

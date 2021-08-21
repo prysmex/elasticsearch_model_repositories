@@ -4,7 +4,7 @@ module ElasticsearchRepositories
     # Encapsulates the collection of records returned from the database
     #
     # Implements Enumerable and forwards its methods to the {#records} object,
-    # which is provided by an {ElasticsearchRepositories::Adapter::Adapter} implementation.
+    # which is provided by an {ElasticsearchRepositories::Adapter} implementation.
     #
     class Records
       include Enumerable
@@ -22,7 +22,7 @@ module ElasticsearchRepositories
 
         # Include module provided by the adapter in the singleton class ("metaclass")
         #
-        adapter = Adapter.from_class(klass)
+        adapter = Adapter.new(klass)
         # puts klass
         # puts adapter.records_mixin
         metaclass = class << self; self; end

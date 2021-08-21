@@ -1,54 +1,75 @@
 module ElasticsearchRepositories
   module Strategy
+    
+    #
+    # This module contains all methods used by BaseStrategy regarding:
+    #
+    # - index settings
+    # - index mappings
+    # - index naming
+    #   - search_index_name
+    #   - target_index_name
+    #   - current_index_name
+    #
+    # It also contains 2 utility classes (Settings, Mappings)
+    #
     module Configuration
 
-      # Wraps the [index settings](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)
+      # Utility class for elasticsearch index settings
       #
       class Settings
         attr_accessor :settings
 
+        # @param [Hash] settings index settings
         def initialize(settings={})
           @settings = settings
         end
 
+        # serialize into hash
         def to_hash
           @settings
         end
+        alias_method :as_json, :to_hash
 
-        def as_json
-          to_hash
-        end
       end
 
-      # Wraps the [index mappings](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html)
+      # Utility class for elasticsearch index mappings
       #
       class Mappings
-        attr_accessor :type, :options, :strategy, :dynamic_properties_methods
+        attr_accessor :options, :strategy, :mapping, :runtime_fields, :dynamic_properties_methods
 
         # @private
         TYPES_WITH_EMBEDDED_PROPERTIES = %w(object nested)
 
-        def initialize(type = nil, options={}, strategy=nil)
+        # @param [Hash] options index mappings options (dynamic, etc...)
+        # @param [ElasticsearchRepositories::BaseStrategy] strategy
+        def initialize(options={}, strategy=nil)
           self.instance_variable_set('@dynamic_properties_methods', [])
-          @type    = type
           @options = options
           @strategy = strategy
           @mapping = {}
           @runtime_fields = {}
         end
 
-        def indexes(name, options={}, &block)
-          @mapping[name] = options
+        #
+        # Used to define new fields in the mappings. Use blocks to define nested fields
+        #
+        # @param [Symbol] field_name
+        # @param [Hash] definition field definition
+        #
+        # @return [Mappings] self
+        def indexes(field_name, definition={}, &block)
+          @mapping[field_name] = definition
 
           if block_given?
-            @mapping[name][:type] ||= 'object'
-            properties = TYPES_WITH_EMBEDDED_PROPERTIES.include?(@mapping[name][:type].to_s) ? :properties : :fields
+            @mapping[field_name][:type] ||= 'object'
+            properties = TYPES_WITH_EMBEDDED_PROPERTIES.include?(@mapping[field_name][:type].to_s) ? :properties : :fields
 
-            @mapping[name][properties] ||= {}
+            @mapping[field_name][properties] ||= {}
 
             previous = @mapping
             begin
-              @mapping = @mapping[name][properties]
+              @mapping = @mapping[field_name][properties]
               self.instance_eval(&block)
             ensure
               @mapping = previous
@@ -56,15 +77,28 @@ module ElasticsearchRepositories
           end
 
           # Set the type to `text` by default
-          @mapping[name][:type] ||= 'text'
+          @mapping[field_name][:type] ||= 'text'
 
           self
         end
 
-        def runtime_field(name, options)
-          @runtime_fields[name] = options
+        # Defines a new runtime filed
+        #
+        # @param [String] field_name
+        # @param [Hash] definition
+        #
+        # @return [void]
+        def runtime_field(field_name, definition)
+          @runtime_fields[field_name] = definition
         end
 
+        # Registers a new method to be executed when serializing in #to_hash
+        # The arguments should be passed as a hash where the key is the method's name
+        # when calling #to_hash
+        #
+        # @param [Symbol] method_name
+        # @param [Proc] &block
+        # @return [void]
         def register_dynamic_properties_method(method_name, &block)
           define_singleton_method(method_name, &block) if block_given?
 
@@ -73,18 +107,23 @@ module ElasticsearchRepositories
           self.instance_variable_set('@dynamic_properties_methods', methods)
         end
 
-        def to_hash(_dynamic_properties_methods_args: [], **dynamic_properties_methods_args)
+        # Serialize into hash. If any methods where registed using #register_dynamic_properties_method,
+        # arguments should be passed or use _dynamic_properties_methods_to_skip param
+        # 
+        # @param [Array] _dynamic_properties_methods_to_skip
+        # @param [Hash] dynamic_properties_methods_args where key is method name and value are the arguments
+        # @return [Hash] serialized mappings
+        def to_hash(_dynamic_properties_methods_to_skip: [], **dynamic_properties_methods_args)
 
           # static properties
-          mappings_hash = {properties: @mapping, runtime: @runtime_fields}
-          mappings_hash = { @type.to_sym => mappings_hash } if @type
+          mappings_hash = @options.merge(properties: @mapping, runtime: @runtime_fields)
 
           #prevent pollution of @mapping since it is cached
           mappings_hash = Marshal.load(Marshal.dump(mappings_hash))
 
           # support dynamic properties
           dynamic_properties_methods.each do |method_name|
-            next if _dynamic_properties_methods_args.include?(method_name)
+            next if _dynamic_properties_methods_to_skip.include?(method_name)
             self.public_send(method_name, mappings_hash, *dynamic_properties_methods_args[method_name])
           end
 
@@ -93,26 +132,44 @@ module ElasticsearchRepositories
 
       end
 
+      #
+      # Contains methods to be included in ElasticsearchRepositories::BaseStrategy
+      #
       module Methods
-        #index name for searching records
+
+        # index name for searching records
+        #
+        # @return [String]
         def search_index_name
+          raise NotImplementedError('need to implement own search_index_name method')
         end
-  
-        #get the target index for a specific record
+
+        # get the target index for a specific record
+        #
+        # @param record instance to calculate the index name
+        # @return [String]
         def target_index_name(record)
+          raise NotImplementedError('need to implement own target_index_name method')
         end
   
         #Used by index management module
+        #
+        # @return [String]
         def current_index_name
+          raise NotImplementedError('need to implement own current_index_name method')
         end
 
+        # @return [NilClass, Mappings]
         def mappings
           @cached_mapping
         end
   
-        #index mappings
+        # set/update the mappings to the strategy
+        #
+        # @param [Hash] options
+        # @return [void]
         def set_mappings(options={}, &block)
-          @cached_mapping ||= Mappings.new(nil, options, self)
+          @cached_mapping ||= Mappings.new(options, self)
   
           @cached_mapping.options.update(options) unless options.empty?
           if block_given?
@@ -122,13 +179,15 @@ module ElasticsearchRepositories
           end
         end
 
+        # @return [NilClass, Settings]
         def settings
           @cached_settings
         end
   
-        #index settings
+        # set/update the settings to the strategy
+        #
+        # @return [void]
         def set_settings(settings={}, &block)
-          # settings = YAML.load(settings.read) if settings.respond_to?(:read)
           @cached_settings ||= Settings.new(settings)
 
           @cached_settings.settings.update(settings) unless settings.empty?

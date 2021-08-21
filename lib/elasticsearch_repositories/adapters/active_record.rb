@@ -1,5 +1,5 @@
 module ElasticsearchRepositories
-  module Adapter
+  module Adapters
 
     # An adapter for ActiveRecord-based models
     #
@@ -117,5 +117,6 @@ module ElasticsearchRepositories
       end
 
     end
+
   end
 end

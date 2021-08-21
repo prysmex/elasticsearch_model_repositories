@@ -2,6 +2,7 @@ module ElasticsearchRepositories
   # used to keep track which classes have the ElasticsearchRepositories::Model
   # module included
   class ClassRegistry
+    
     def initialize
       @models = []
     end
@@ -37,5 +38,6 @@ module ElasticsearchRepositories
     def models
       @models
     end
+
   end
 end

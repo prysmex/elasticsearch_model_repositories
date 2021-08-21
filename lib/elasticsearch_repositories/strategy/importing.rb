@@ -1,8 +1,14 @@
 module ElasticsearchRepositories
   module Strategy
+    
+    #
+    # This module contains all methods used by BaseStrategy regarding:
+    # - importing data
+    #
     module Importing
 
-      #supports any options sent to the host's class reload_index! method
+      # @param [String] start_time in case time based indices
+      # @param [String] end_time in case time based indices
       def reindexing_index_iterator(start_time = nil, end_time = nil, &block)
         yield *[
           where(''),
@@ -18,6 +24,11 @@ module ElasticsearchRepositories
         ]
       end
 
+      # Proc to prevent n+1 queries while importing
+      #
+      # @todo this is only for ActiveRecord based models
+      #
+      # @return []
       def reindexing_includes_proc
         Proc.new do |query|
           query.where('')
