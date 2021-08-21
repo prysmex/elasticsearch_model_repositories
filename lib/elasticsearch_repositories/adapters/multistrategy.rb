@@ -1,5 +1,6 @@
 module ElasticsearchRepositories
-  module Adapter
+  module Adapters
+
     module Multistrategy
 
       Adapter.register self, lambda { |klass| klass.is_a? Array }
@@ -48,7 +49,7 @@ module ElasticsearchRepositories
         def __records_for_klass(klass, ids)
           adapter = __adapter_for_klass(klass)
           case
-          when ElasticsearchRepositories::Adapter::ActiveRecord.equal?(adapter)
+          when ElasticsearchRepositories::Adapters::ActiveRecord.equal?(adapter)
             multi_includes = self.options .try(:[], :multimodel_includes)
     
             klass_includes = []
@@ -60,8 +61,6 @@ module ElasticsearchRepositories
               klass_includes = multi_includes
             end
             klass.where(klass.primary_key => ids).includes(klass_includes)
-          # when ElasticsearchRepositories::Adapter::Mongoid.equal?(adapter)
-          #   klass.where(:id.in => ids)
           else
             klass.find(ids)
           end
@@ -121,5 +120,6 @@ module ElasticsearchRepositories
       end
 
     end
+    
   end
 end

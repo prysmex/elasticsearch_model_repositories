@@ -1,31 +1,50 @@
 PATH
   remote: .
   specs:
-    elasticsearch_model_repositories (0.2.0)
-      elasticsearch (= 7.9.0)
+    elasticsearch_model_repositories (0.2.5)
+      activesupport (~> 5)
+      elasticsearch (~> 7.13.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
+    activesupport (5.2.6)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      i18n (>= 0.7, < 2)
+      minitest (~> 5.1)
+      tzinfo (~> 1.1)
     ansi (1.5.0)
     builder (3.2.4)
-    elasticsearch (7.9.0)
-      elasticsearch-api (= 7.9.0)
-      elasticsearch-transport (= 7.9.0)
-    elasticsearch-api (7.9.0)
+    concurrent-ruby (1.1.9)
+    elasticsearch (7.13.3)
+      elasticsearch-api (= 7.13.3)
+      elasticsearch-transport (= 7.13.3)
+    elasticsearch-api (7.13.3)
       multi_json
-    elasticsearch-transport (7.9.0)
+    elasticsearch-transport (7.13.3)
       faraday (~> 1)
       multi_json
-    faraday (1.4.1)
+    faraday (1.7.0)
+      faraday-em_http (~> 1.0)
+      faraday-em_synchrony (~> 1.0)
       faraday-excon (~> 1.1)
+      faraday-httpclient (~> 1.0.1)
       faraday-net_http (~> 1.0)
       faraday-net_http_persistent (~> 1.1)
+      faraday-patron (~> 1.0)
+      faraday-rack (~> 1.0)
       multipart-post (>= 1.2, < 3)
       ruby2_keywords (>= 0.0.4)
+    faraday-em_http (1.0.0)
+    faraday-em_synchrony (1.0.0)
     faraday-excon (1.1.0)
+    faraday-httpclient (1.0.1)
     faraday-net_http (1.0.1)
-    faraday-net_http_persistent (1.1.0)
+    faraday-net_http_persistent (1.2.0)
+    faraday-patron (1.0.0)
+    faraday-rack (1.0.0)
+    i18n (1.8.10)
+      concurrent-ruby (~> 1.0)
     minitest (5.14.2)
     minitest-reporters (1.4.3)
       ansi
@@ -36,7 +55,10 @@ GEM
     multipart-post (2.1.1)
     rake (13.0.1)
     ruby-progressbar (1.11.0)
-    ruby2_keywords (0.0.4)
+    ruby2_keywords (0.0.5)
+    thread_safe (0.3.6)
+    tzinfo (1.2.9)
+      thread_safe (~> 0.1)
 
 PLATFORMS
   ruby

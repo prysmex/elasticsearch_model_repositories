@@ -23,7 +23,6 @@ module ElasticsearchRepositories
         # Returns the Elasticsearch response
         #
         # @return [Hash]
-        #
         def response
           with_cache('response') do
             search.execute!
@@ -33,7 +32,6 @@ module ElasticsearchRepositories
         # Returns the collection of "hits" from Elasticsearch
         #
         # @return [Results]
-        #
         def results
           with_cache('results') do
             response.dig('hits', 'hits').map { |hit| Result.new().merge! hit }
@@ -43,7 +41,6 @@ module ElasticsearchRepositories
         # Returns the collection of records from the database
         #
         # @return [Records]
-        #
         def records(options = {})
           with_cache('records') do
             Records.new(strategy.host_class, self, options)
@@ -51,38 +48,32 @@ module ElasticsearchRepositories
         end
 
         # Returns the total number of hits
-        #
         def total
           total = response.dig('hits', 'total')
           total.respond_to?(:each_pair) ? total['value'] : total
         end
 
         # Returns the max_score
-        #
         def max_score
           response.dig('hits', 'max_score')
         end
 
         # Returns the "took" time
-        #
         def took
           response['took']
         end
 
         # Returns whether the response timed out
-        #
         def timed_out
           response['timed_out']
         end
 
         # Returns the statistics on shards
-        #
         def shards
           response['_shards']
         end
 
         # Returns aggregations
-        #
         def aggregations
           with_cache('aggregations') do
             Aggregations.new().merge! (response['aggregations'] || {})
@@ -90,7 +81,6 @@ module ElasticsearchRepositories
         end
 
         # Returns suggestions
-        #
         def suggestions
           with_cache('suggestions') do
             Suggestions.new().merge! (response['suggest'] || {})
@@ -98,7 +88,6 @@ module ElasticsearchRepositories
         end
 
         # Calls block when passed variable is nil or when @use_cache is true
-        #
         def with_cache(key)
           return @cache[key] if @cache[key] && @use_cache
 
@@ -106,7 +95,6 @@ module ElasticsearchRepositories
         end
 
         # Clears all cache
-        #
         def clear_cache!
           @cache.clear
         end

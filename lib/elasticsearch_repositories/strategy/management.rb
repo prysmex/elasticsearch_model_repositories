@@ -1,66 +1,66 @@
 module ElasticsearchRepositories
   module Strategy
+    
+    #
+    # This module contains all methods used by BaseStrategy regarding:
+    # - creating the index
+    # - deleting the index
+    # - check if index exists
+    # - refreshing the index
+    #
     module Management
 
-      #create an index with mappings and settings
-      def create_index!(options={})
-        options = options.clone
-        target_index = options.delete(:index) || self.current_index_name
-        settings     = options.delete(:settings) || self.settings.to_hash
-        mappings     = options.delete(:mappings) || self.mappings.to_hash
+      # create an index with mappings and settings
+      #
+      # @param [Boolean] force if true, deletes the index if exists
+      # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#create options
+      # @return [Hash, nil] nil if already exists
+      def create_index(force: false, index: current_index_name, settings: settings.to_hash, mappings: mappings.to_hash, **options)
+        delete_index(index: index) if force
 
-        delete_index!(options.merge index: target_index) if options[:force]
-
-        unless index_exists?(index: target_index)
-          options.delete(:force)
-          @client.indices.create({
-            index: target_index,
-            body: {
-              settings: settings,
-              mappings: mappings
-            }
-          }.merge(options))
-        end
+        return if index_exists?(index: index)
+        @client.indices.create(
+          index: index,
+          body: {
+            settings: settings,
+            mappings: mappings
+          },
+          **options
+        )
       end
 
-      #delete an index with mappings and settings
-      def delete_index!(options={})
-        target_index = options.delete(:index) || self.current_index_name
-        begin
-          @client.indices.delete index: target_index
-        rescue Exception => e
-          if e.class.to_s =~ /NotFound/ && options[:force]
-            @client.transport.logger.debug("[!!!] Index does not exist (#{e.class})") if @client.transport.logger
-            nil
-          else
-            raise e
-          end
-        end
+      # delete an index with mappings and settings
+      #
+      # @param [String] index
+      # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#delete options
+      # @return [Hash, nil] nil if not found
+      def delete_index(index: self.current_index_name, **options)
+        @client.indices.delete(index: index, **options)
+      rescue Elasticsearch::Transport::Transport::Errors::NotFound => e
+        client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
       end
 
       # Returns true if the index exists
-      def index_exists?(options={})
-        target_index = options[:index] || self.current_index_name
-
-        self.client.indices.exists(index: target_index) rescue false
+      #
+      # @param [String] index
+      # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#exists options
+      # @param [Boolean] true if exists
+      def index_exists?(index: self.current_index_name, **options)
+        self.client.indices.exists(index: index, **options)
       end
 
       # Performs the "refresh" operation for the index (useful e.g. in tests)
-      def refresh_index!(options={})
-        target_index = options.delete(:index) || self.current_index_name
+      # @param [String] index
+      # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#refresh options
+      # @return [Hash, nil] nil if not found
+      def refresh_index(index: self.current_index_name, **options)
+        self.client.indices.refresh(index: index, **options)
 
-        begin
-          self.client.indices.refresh index: target_index
-        rescue Exception => e
-          if e.class.to_s =~ /NotFound/ && options[:force]
-            client.transport.logger.debug("[!!!] Index does not exist (#{e.class})") if client.transport.logger
-            nil
-          else
-            raise e
-          end
-        end
+      rescue Elasticsearch::Transport::Transport::Errors::NotFound => e
+        client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
       end
       
     end
+
   end
 end
