@@ -7,96 +7,134 @@ module ElasticsearchRepositories
 
     module Importing
 
-      # Calls reindexing_index_iterator for all of the class's strategies
+      # Creates indices for a model's strategies
+      # If the indices are timebased, you may pass start_time and end_time to only
+      # create a subset of indices
       #
+      # @param [DateTime] start_time start_time passed to reindexing_index_iterator
+      # @param [DateTime] end_time end_time passed to reindexing_index_iterator
+      # @param [Boolean] force
       # @return [void]
-      def _call_reindex_iterators(*payload, &block)
-        self.instance_variable_get('@indexing_strategies').each do |strategy|
-          strategy.public_send(:reindexing_index_iterator, *payload, &block)
+      def create_indices!(start_time: nil, end_time: nil, force: true)
+        indexing_strategies.each do |strategy|
+          strategy.reindexing_index_iterator(start_time, end_time) do |import_db_query, iterator_options|
+            strategy.create_index({
+              force: force,
+              index: iterator_options[:index],
+              mappings: iterator_options[:mappings],
+              settings: iterator_options[:settings]
+            })
+          end
         end
       end
+
+      # Reloads data into a model's indices
+      # 
+      # By default it recreates the indices, if you want to only load data use `force: true` option
+      #  
+      # @param [DateTime] start_time start_time passed to reindexing_index_iterator
+      # @param [DateTime] end_time end_time passed to reindexing_index_iterator
+      # @param [Hash] options
+      # @param options[:batch_size] [Integer]
+      # @param options[:batch_sleep] [Integer]
+      # @param options[:refresh] [Boolean]
+      # @param options[:force] [Boolean]
+      # @param options[:verify_count] [Boolean]
+      # @return [Integer] number of errors for all strategies
+      def reload_indices!(start_time: nil, end_time: nil, **options)
   
-      def reload_indices!(options={})
-  
-        required_options = [
-          :batch_size, :index, :es_query,# :es_query_options,
-          :strategy, :settings, :mappings
-        ]
-  
-        start_time = options[:start_time]
-        end_time = options[:end_time]
-  
-        sanitized_options = options.slice(
+        override_options = options.slice(
           :batch_size,
           :batch_sleep,
-          :refresh,
           :force,
+          :refresh,
           :verify_count
         )
         
         default_options = {
           batch_size: 1000,
           batch_sleep: 2,
-          refresh: false,
           force: true,
+          refresh: false,
           verify_count: true
         }
   
         error_count = 0
-        _call_reindex_iterators(
-          start_time,
-          end_time
-        ) do |import_db_query, iterator_options|
-          iterator_options = iterator_options.slice(
-            :batch_size,
-            :batch_sleep,
-            :refresh,
-            :force,
-            :verify_count,
-            :refresh,
-            :index,
-            :type,
-            :transform,
-            :pipeline,
-            # :import_db_query,
-            :strategy,
-            :index_without_id,
-            :settings,
-            :mappings,
-            :es_query,
-            :es_query_options
-          )
-          merged_options = default_options
-              .merge(iterator_options)
-              .merge(sanitized_options)
-  
-          required_options.each do|name|
-            unless merged_options.key?(name)
-              raise ArgumentError.new("missing key #{name} in options while importing")
+
+        # call reindexing_index_iterator for all strategies
+        indexing_strategies.each do |strategy|
+          strategy.reindexing_index_iterator(start_time, end_time) do |import_db_query, iterator_options|
+
+            # extract allowed options from iterator
+            iterator_options = iterator_options.slice(
+              :batch_size,
+              :batch_sleep,
+              :es_query,
+              :force,
+              # :import_db_query
+              :index,
+              :index_without_id,
+              :mappings,
+              :pipeline,
+              :refresh,
+              :refresh,
+              :settings,
+              :strategy,
+              :transform,
+              :type,
+              :verify_count
+            )
+
+            # merge final options
+            merged_options = default_options
+                .merge(iterator_options)
+                .merge(override_options)
+    
+            # ensure important options keys are present
+            [
+              :batch_size, :index, :es_query,
+              :strategy, :settings, :mappings
+            ].each do|name|
+              unless merged_options.key?(name)
+                raise ArgumentError.new("missing key #{name} in options while importing")
+              end
             end
-          end
-  
-          shards_error_count = _create_index_and_import_data(import_db_query, merged_options)
-          if merged_options[:verify_count]
-            _verify_index_doc_count(import_db_query, merged_options)
+    
+            error_count += create_index_and_import_data(import_db_query, merged_options)
+
+            if merged_options[:verify_count]
+              verify_index_doc_count(import_db_query, merged_options)
+            end
+
           end
         end
   
-        puts error_count
         return error_count
       end
+
+      private
   
-      # Wrapper of import method
-      # Updates and index refresh_interval setting for faster indexing
+      # Creates an index, and calls #import
       # When options[:force] is true, the index in deleted and recreated with
       # mappings and settings
-      # import_db_query is a active_record query
-      def _create_index_and_import_data(import_db_query, options)
-        error_count = 0
+      #
+      # @param [] import_db_query an active_record query relation
+      # @param [Hash] options
+      # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
+      # @param options[:index]      [string]
+      # @param options[:force]      [Boolean]
+      # @param options[:mappings]   [Hash]
+      # @param options[:settings]   [Hash]
+      # @param options[:batch_size] [Integer]
+      # @param options[:refresh]    [Boolean]
+      # @param options[:scope]      []
+      # @param options[:transform]  [Proc]
+      # @return [Integer] number of errors for all strategies
+      def create_index_and_import_data(import_db_query, options)
         strategy = options[:strategy]
         index_name = options[:index]
   
-        #this is required because import does not support settings
+        # this is required because import does not support settings
         # if force is true, the index in deleted and re-created
         strategy.create_index({
           force: options[:force],
@@ -105,18 +143,19 @@ module ElasticsearchRepositories
           settings: options[:settings]
         })
   
+        # set refresh_interval to -1 to speed up indexing
         strategy.client.indices.put_settings(
           index: index_name,
           body: { index: { refresh_interval: -1 } }
         )
   
-        error_count = import(
+        import(
           force: false,
           index: index_name,
           batch_size: options[:batch_size],
           refresh: options[:refresh],
-          scope: options[:scope],# for some reason it only works if the query is defined inside the 'query' lambda
-          strategy: options[:strategy],
+          scope: options[:scope], # for some reason it only works if the query is defined inside the 'query' lambda
+          strategy: strategy,
           transform: options[:transform],
           query: -> {
             strategy.reindexing_includes_proc.call(import_db_query)
@@ -124,18 +163,24 @@ module ElasticsearchRepositories
         ) do |response|
             puts "#{(response['items'].size.to_f * 1000 / response['took']).round(0)}/s"
         end
-  
+      ensure
+        # restore refresh_interval @todo restore to origina, not hardcoded 1s
         strategy.client.indices.put_settings(
           index: index_name,
           body: { index: { refresh_interval: '1s' } }
         )
-  
-        error_count
       end
   
       # verifies that an index contains the same amount of
       # documents as the database for a specific db and es query.
-      def _verify_index_doc_count(import_db_query, options)
+      #
+      # @param [] import_db_query an active_record query relation
+      # @param [Hash] options
+      # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
+      # @param options[:index]      [String]
+      # @param options[:es_query]   [Hash]
+      # @return [Boolean]
+      def verify_index_doc_count(import_db_query, options)
         index_name = options[:index]
         es_query = options[:es_query]
   
@@ -155,7 +200,21 @@ module ElasticsearchRepositories
         end
         db_count == es_count
       end
-  
+
+      # @param [Hash] options
+      # @param options[:refresh]   [Boolean]
+      # @param options[:index]   [String]
+      # @param options[:type]   [String]
+      # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
+      # @param options[:transform]   [Proc]
+      # @param options[:pipeline]   []
+      # @param options[:return]   ['errors', 'count']
+      # @param options[:force]   [Boolean]
+      # @param options[:query]   [Proc]
+      # @param options[:scope]   [Symbol]
+      # @param options[:preprocess]   [Symbol]
+      # @param options[:batch_sleep]   [Integer]
+      # @return [Integer] errors count
       def import(options={}, &block)
         errors       = []
         refresh      = options.delete(:refresh)   || false
@@ -177,7 +236,7 @@ module ElasticsearchRepositories
           raise ArgumentError,
                 "#{target_index} does not exist to be imported into. Use create_index or the :force option to create it."
         end
-  
+
         __find_in_batches(options) do |batch|
           params = {
             index: target_index,
@@ -208,9 +267,15 @@ module ElasticsearchRepositories
         end
       end
   
+      # Maps an array of the model's instances by calling the transform Proc
+      #
+      # @param [Array] batch
+      # @param [ElasticsearchRepositories::BaseStrategy] strategy
+      # @param [Proc] transform
       def __batch_to_bulk(batch, strategy, transform)
         batch.map { |model| transform.call(model, strategy) }
       end
+
     end
     
     module ClassMethods
@@ -231,7 +296,7 @@ module ElasticsearchRepositories
           ::ElasticsearchRepositories::ClassRegistry.add(self)
         end
 
-        strategies = self.instance_variable_get('@indexing_strategies') || []
+        strategies = indexing_strategies || []
         strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
         if strategy
           raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
@@ -247,7 +312,7 @@ module ElasticsearchRepositories
       # @param [String] name the identifier of the strategy
       # @return [void]
       def update_strategy(name, &block)
-        strategies = self.instance_variable_get('@indexing_strategies') || []
+        strategies = indexing_strategies || []
         strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
         if strategy
           strategy.update(&block)
@@ -279,7 +344,7 @@ module ElasticsearchRepositories
       #
       # @return [String]
       def _base_index_name
-        "#{Rails.env}_#{_to_index_model_name}_"
+        _to_index_model_name
       end
 
       # all class indices must comply with this base name
@@ -301,9 +366,8 @@ module ElasticsearchRepositories
 
     module InstanceMethods
 
-      # @todo this should be on ClassMethods
       def self.included(base)
-        base.public_send :extend, Adapter.new(base).importing_mixin
+        base.extend Adapter.new(base).importing_mixin unless base == ::ElasticsearchRepositories::Model
       end
 
       # Indexes the record to all indices of it's classes strategies

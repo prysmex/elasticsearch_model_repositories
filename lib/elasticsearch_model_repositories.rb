@@ -9,7 +9,6 @@ require 'active_support/core_ext/module/delegation'
 # adapter
 require_relative 'elasticsearch_repositories/adapter'
 require_relative 'elasticsearch_repositories/adapters/active_record'
-require_relative 'elasticsearch_repositories/adapters/default'
 require_relative 'elasticsearch_repositories/adapters/multistrategy'
 
 require_relative 'elasticsearch_repositories/model'

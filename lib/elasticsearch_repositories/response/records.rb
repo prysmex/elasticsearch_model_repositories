@@ -20,13 +20,10 @@ module ElasticsearchRepositories
         @klass = klass
         @response = response
 
-        # Include module provided by the adapter in the singleton class ("metaclass")
+        # Include module provided by the adapter in the singleton class
         #
         adapter = Adapter.new(klass)
-        # puts klass
-        # puts adapter.records_mixin
-        metaclass = class << self; self; end
-        metaclass.__send__ :include, adapter.records_mixin
+        self.singleton_class.include adapter.records_mixin
 
         self.options = options
       end

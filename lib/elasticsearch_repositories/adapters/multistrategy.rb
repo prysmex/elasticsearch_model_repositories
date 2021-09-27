@@ -1,120 +1,110 @@
 module ElasticsearchRepositories
   module Adapters
 
+    #
+    # Adapter for multimodel ActiveRecord-based models
+    # This is a read only strategy, so no Importing or Callbacks modules
+    #
     module Multistrategy
 
+      # register adapter
       Adapter.register self, lambda { |klass| klass.is_a? Array }
 
       module Records
 
-        # Returns a collection of model instances, possibly of different classes (ActiveRecord, Mongoid, ...)
+        # Returns a collection of model instances, possibly of different classes and adapters (ActiveRecord, Mongoid, ...)
         #
-        # @note The order of results in the Elasticsearch response is preserved
+        # @note The order of results in the Elasticsearch response must be preserved
         #
         def records
-          records_by_type = __records_by_type
+          type_model_cache = {}
 
-          records = response.results.map do |result|
-            records_by_type[ __type_for_hit(result) ][ result.id ]
+          # group ids by model
+          # {
+          #   Foo => ["1"],
+          #   Bar => ["1", "5"]
+          # }
+          ids_by_type = response.results.each_with_object({}) do |result, obj|
+            type = __type_for_result(result)
+            model = type_model_cache[type] ||= response.strategy.host_class.detect do |model|
+              __model_to_type(model) == type
+            end
+            next if model.nil?
+            result[:___model_cache___] = model
+
+            obj[model] ||= []
+            obj[model] << result.id
           end
 
-          records.compact
+          # search by model
+          # {
+          #   Foo  => {"1"=> #<Foo id: 1, title: "ABC"}, ...},
+          #   Bar  => {"1"=> #<Bar id: 1, name: "XYZ"}, ...}
+          # }
+          records_by_type = ids_by_type.each_with_object({}) do |(model, ids), obj|
+            h = obj[model] = {}
+            __records_for_model(model, ids).each do |record|
+              h[record.id] = record
+            end
+          end
+
+          # build array, with original sorting
+          response.results.each_with_object([]) do |result, obj|
+            # record = records_by_type.dig(type_model_cache[__type_for_result(result)], result.id)
+            record = records_by_type.dig(result[:___model_cache___], result.id)
+            obj.push(record) if record
+          end
         end
 
-        # Returns the collection of records grouped by class based on `_type`
+        private
+
+        # Extracts the type from the result used to compare with #__model_to_type
         #
-        # Example:
+        # @param [ElasticsearchRepositories::Response::Result] result
+        # @return [String]
+        def __type_for_result(result)
+          result.dig('_source', 'type')
+        end
+
+        # Converts a class name to a string used to compare with #__type_for_result
         #
-        # {
-        #   Foo  => {"1"=> #<Foo id: 1, title: "ABC"}, ...},
-        #   Bar  => {"1"=> #<Bar id: 1, name: "XYZ"}, ...}
-        # }
+        # @param [Class] model
+        # @return [String]
+        def __model_to_type(model)
+          model.name
+        end
+
+        # Returns the collection of records for a specific type based on passed `model`
         #
         # @api private
         #
-        def __records_by_type
-          result = __ids_by_type.map do |klass, ids|
-            records = __records_for_klass(klass, ids)
-            ids     = records.map(&:id).map(&:to_s)
-            [ klass, Hash[ids.zip(records)] ]
-          end
-
-          Hash[result]
-        end
-
-        # Returns the collection of records for a specific type based on passed `klass`
-        #
-        # @api private
-        #
-        def __records_for_klass(klass, ids)
-          adapter = __adapter_for_klass(klass)
+        def __records_for_model(model, ids)
+          adapter = __adapter_for_model(model)
           case
           when ElasticsearchRepositories::Adapters::ActiveRecord.equal?(adapter)
-            multi_includes = self.options .try(:[], :multimodel_includes)
-    
-            klass_includes = []
+
+            multi_includes = self.options[:multimodel_includes]
+            model_includes = []
             if multi_includes.is_a? Hash
-              klass_includes << multi_includes.try(:[], klass.name.underscore.to_sym) 
-              klass_includes << multi_includes.try(:[], :all)
-              klass_includes = klass_includes.flatten.compact
+              model_includes.concat(multi_includes[model.name.underscore.to_sym])
+              model_includes.concat(multi_includes[:all])
+              model_includes = model_includes.compact
             else
-              klass_includes = multi_includes
+              model_includes = multi_includes
             end
-            klass.where(klass.primary_key => ids).includes(klass_includes)
+
+            model.where(model.primary_key => ids).includes(model_includes)
           else
-            klass.find(ids)
+            raise StandardError.new("#{adapter.name} not implemented in multistrategy adapter")
           end
         end
-
-        # Returns the record IDs grouped by class based on type `_type`
-        #
-        # Example:
-        #
-        #   { Foo => ["1"], Bar => ["1", "5"] }
-        #
-        # @api private
-        #
-        def __ids_by_type
-          ids_by_type = {}
-
-          response.results.each do |hit|
-            type = __type_for_hit(hit)
-            ids_by_type[type] ||= []
-            ids_by_type[type] << hit.id
-          end
-          ids_by_type
-        end
-
-        # Returns the class of the model corresponding to a specific `hit` in Elasticsearch results
-        #
-        # @api private
-        #
-        # Caching classes is not a good idea since the app reloads in development enviroment
-        def __type_for_hit(hit)
-          # @@__types ||= {}
-          # key = hit['_index']
-
-          # @@__types[key] ||= begin
-          #   response.strategy.host_class.detect do |model|
-          #     model.to_s == hit.dig('_source', 'type')
-          #   end
-          # end
-
-          response.strategy.host_class.detect do |model|
-            model.to_s == hit.dig('_source', 'type')
-          end
-        end
-
-        # def __no_type?(hit)
-        #   hit['_type'].nil? || hit['_type'] == '_doc'
-        # end
 
         # Returns the adapter registered for a particular `klass` or `nil` if not available
         #
         # @api private
         #
-        def __adapter_for_klass(klass)
-          Adapter.adapters.select { |name, checker| checker.call(klass) }.keys.first
+        def __adapter_for_model(model)
+          Adapter.adapters.select { |name, checker| checker.call(model) }.keys.first
         end
 
       end

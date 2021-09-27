@@ -15,7 +15,7 @@ module ElasticsearchRepositories
       # @param [Boolean] force if true, deletes the index if exists
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#create options
       # @return [Hash, nil] nil if already exists
-      def create_index(force: false, index: current_index_name, settings: settings.to_hash, mappings: mappings.to_hash, **options)
+      def create_index(force: false, index: current_index_name, settings: self.settings.to_hash, mappings: self.mappings.to_hash, **options)
         delete_index(index: index) if force
 
         return if index_exists?(index: index)

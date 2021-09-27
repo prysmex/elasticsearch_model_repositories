@@ -270,9 +270,8 @@ class Yearly < ElasticsearchRepositories::BaseStrategy
         # this is the important part, you need to yield a splatted array
         # with the following parameters:
         # 1) AR relation object with query to fetch records to import
-        # 2) Indexing options object
-        # 3) ??
-        yield *[
+        # 2) reindexing options hash
+        yield(
           host_class.where('created_at >= ? and created_at < ?', _start, _end),
           {
             strategy: self,
@@ -280,11 +279,9 @@ class Yearly < ElasticsearchRepositories::BaseStrategy
             index_without_id: index_without_id,
             settings: settings.to_hash,
             mappings: mappings.to_hash,
-            es_query: { query: { bool:{ filter: [ range: { created_at: { gte: _start, lt: _end  } } ] } } },
-            es_query_options: {}
-          },
-          [_start, _end] # ToDo: Check if this parameter is really used
-        ]
+            es_query: { query: { bool:{ filter: [ range: { created_at: { gte: _start, lt: _end  } } ] } } }
+          }
+        )
       end
     end
   end

@@ -4,7 +4,6 @@ module ElasticsearchRepositories
   # * {Adapter#records_mixin   Fetching records from the database}
   # * {Adapter#importing_mixin Efficient bulk loading from the database}
   #
-  # @see ElasticsearchRepositories::Adapters::Default
   # @see ElasticsearchRepositories::Adapters::ActiveRecord
   #
 
@@ -77,8 +76,7 @@ module ElasticsearchRepositories
     # @api private
     def adapter
       @adapter ||= begin
-        self.class.adapters.find( lambda {[]} ) { |name, condition| condition.call(klass) }.first \
-        || ElasticsearchRepositories::Adapters::Default
+        self.class.adapters.find( lambda {[]} ) { |name, condition| condition.call(klass) }.first
       end
     end
 
