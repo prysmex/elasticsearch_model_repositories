@@ -44,14 +44,14 @@ module ElasticsearchRepositories
           records_by_type = ids_by_type.each_with_object({}) do |(model, ids), obj|
             h = obj[model] = {}
             __records_for_model(model, ids).each do |record|
-              h[record.id] = record
+              h[record.id.to_s] = record
             end
           end
 
           # build array, with original sorting
           response.results.each_with_object([]) do |result, obj|
             # record = records_by_type.dig(type_model_cache[__type_for_result(result)], result.id)
-            record = records_by_type.dig(result[:___model_cache___], result.id)
+            record = records_by_type.dig(result[:___model_cache___], result.id.to_s)
             obj.push(record) if record
           end
         end
