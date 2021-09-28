@@ -92,33 +92,30 @@ module ElasticsearchRepositories
       #
       module Importing
 
+        TRANSFORM_PROC = lambda do |model, strat|
+          if strat.index_without_id
+            { index: { data: strat.as_indexed_json(model) } }
+          else
+            { index: { _id: model.id, data: strat.as_indexed_json(model) } }
+          end
+        end
+
         # Fetch batches of records from the database (used by the import method)
         #
         # @see http://api.rubyonrails.org/classes/ActiveRecord/Batches.html ActiveRecord::Batches.find_in_batches
         #
-        def __find_in_batches(options={}, &block)
+        def self.find_in_batches(model, options={}, &block)
           query = options.delete(:query)
           named_scope = options.delete(:scope)
           preprocess = options.delete(:preprocess)
 
-          scope = self
+          scope = model
           scope = scope.__send__(named_scope) if named_scope
           scope = scope.instance_exec(&query) if query
 
           scope.find_in_batches(**options) do |batch|
-            batch = self.__send__(preprocess, batch) if preprocess
+            batch = model.__send__(preprocess, batch) if preprocess
             yield(batch) if batch.present?
-          end
-        end
-
-        #TODO support strategies
-        def __transform
-          lambda do |model, strat|
-            if strat.index_without_id
-              { index: { data: strat.as_indexed_json(model) } }
-            else
-              { index: { _id: model.id, data: strat.as_indexed_json(model) } }
-            end
           end
         end
 

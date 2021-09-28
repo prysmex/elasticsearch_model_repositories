@@ -216,12 +216,14 @@ module ElasticsearchRepositories
       # @param options[:batch_sleep]   [Integer]
       # @return [Integer] errors count
       def import(options={}, &block)
+        adapter_importing_module = Adapter.new(self).importing_mixin
+
         errors       = []
         refresh      = options.delete(:refresh)   || false
         target_index = options.delete(:index)
         target_type  = options.delete(:type)
         strategy    = options.delete(:strategy)
-        transform    = options.delete(:transform) || __transform
+        transform    = options.delete(:transform) || adapter_importing_module::TRANSFORM_PROC
         pipeline     = options.delete(:pipeline)
         return_value = options.delete(:return)    || 'count'
   
@@ -237,7 +239,7 @@ module ElasticsearchRepositories
                 "#{target_index} does not exist to be imported into. Use create_index or the :force option to create it."
         end
 
-        __find_in_batches(options) do |batch|
+        adapter_importing_module.find_in_batches(self, options) do |batch|
           params = {
             index: target_index,
             type:  target_type,
@@ -365,10 +367,6 @@ module ElasticsearchRepositories
     end
 
     module InstanceMethods
-
-      def self.included(base)
-        base.extend Adapter.new(base).importing_mixin unless base == ::ElasticsearchRepositories::Model
-      end
 
       # Indexes the record to all indices of it's classes strategies
       #
