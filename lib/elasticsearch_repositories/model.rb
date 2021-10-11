@@ -349,18 +349,24 @@ module ElasticsearchRepositories
         _to_index_model_name
       end
 
-      # all class indices must comply with this base name
+      # Gets all possible indices for all strategies implemented on the class
+      #
+      # @return [Array<String>]
+      def all_klass_indices(*args)
+        indexing_strategies.each_with_object([]) do |strategy, obj|
+          strategy.reindexing_index_iterator(*args) do |import_db_query, iterator_options|
+            obj.push(iterator_options[:index]) if iterator_options[:index]
+          end
+        end
+      end
+
+      # delete all indices for a class
       #
       # @return [void]
-      def delete_all_klass_indices!
-        ElasticsearchRepositories.client.cat.indices(
-          index: "#{self._base_index_name}*", h: ['index', 'docs.count']
-        ).each_line do |line|
-          index, count = line.chomp.split("\s")
-          if index.present?
-            puts "deleting #{index}"
-            ElasticsearchRepositories.client.indices.delete(index: index)
-          end
+      def delete_all_klass_indices(*args)
+        all_klass_indices(*args).each do |index|
+          next unless ElasticsearchRepositories.client.indices.exists?(index: index)
+          ElasticsearchRepositories.client.indices.delete(index: index)
         end
       end
       
