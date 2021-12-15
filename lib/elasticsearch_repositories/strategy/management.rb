@@ -37,7 +37,7 @@ module ElasticsearchRepositories
       def delete_index(index: self.current_index_name, **options)
         @client.indices.delete(index: index, **options)
       rescue Elasticsearch::Transport::Transport::Errors::NotFound => e
-        client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
+        client.transport.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.transport.logger
       end
 
       # Returns true if the index exists
@@ -57,7 +57,7 @@ module ElasticsearchRepositories
         self.client.indices.refresh(index: index, **options)
 
       rescue Elasticsearch::Transport::Transport::Errors::NotFound => e
-        client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
+        client.transport.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.transport.logger
       end
       
     end
