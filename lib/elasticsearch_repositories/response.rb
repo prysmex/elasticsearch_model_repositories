@@ -13,6 +13,10 @@ module ElasticsearchRepositories
         #ToDo 'delegate' is rails specific
         delegate :each, :empty?, :size, :slice, :[], :to_ary, to: :results
 
+        # @param [ElasticsearchRepositories::BaseStrategy] strategy <description>
+        # @param [ElasticsearchRepositories::SearchRequest] search <description>
+        # @param [Hash] options
+        # @option options [Boolean] :use_cache
         def initialize(strategy, search, options={})
           @strategy     = strategy
           @search       = search
@@ -51,6 +55,12 @@ module ElasticsearchRepositories
         def total
           total = response.dig('hits', 'total')
           total.respond_to?(:each_pair) ? total['value'] : total
+        end
+
+        # Returns the total number of pages
+        def total_pages
+          size = response.dig('hits', 'hits')&.size || 0
+          size == 0 ? 0 : (self.total / size.to_f).ceil
         end
 
         # Returns the max_score
