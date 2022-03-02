@@ -141,14 +141,11 @@ module ElasticsearchRepositories
         adapter_importing_module = Adapter.new(self).importing_mixin
         bulkify ||= adapter_importing_module::BULKIFY_PROC
   
-        if options[:force]
-          strategy.create_index(
-            **options.slice(:index, :force, :mappings, :settings)
-          )
-        elsif !strategy.index_exists? index: index
-          raise ArgumentError,
-                "#{index} does not exist to be imported into. Use create_index or the :force option to create it."
-        end
+        # create/recreate index
+        strategy.create_index(
+          index: index,
+          **options.slice(:force, :mappings, :settings)
+        )
 
         meta_hash = { errors: [], total: [], indexing_speed: [], batch_speed: [] }
         batch_start_at = Time.now
