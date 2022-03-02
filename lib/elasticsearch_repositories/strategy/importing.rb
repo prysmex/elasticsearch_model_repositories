@@ -27,7 +27,7 @@ module ElasticsearchRepositories
             settings: settings.to_hash,
             mappings: mappings.to_hash,
             index: target_index_name(nil),
-            es_query: {query: {match_all: {}}}
+            verify_count_query: {query: {match_all: {}}}
           }
         )
       end
