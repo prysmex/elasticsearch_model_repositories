@@ -85,17 +85,15 @@ module ElasticsearchRepositories
             end
             
             strategy = merged_options[:strategy]
-            value = with_refresh_interval(strategy, merged_options[:index], -1) do
-              import(
-                query: -> {
-                  strategy.reindexing_includes_proc.call(import_db_query)
-                },
-                **merged_options.slice(:force, :index, :find_params, :refresh, :scope, :strategy, :bulkify),
-                &block
-              )
-            end
+            import_return = import(
+              query: -> {
+                strategy.reindexing_includes_proc.call(import_db_query)
+              },
+              **merged_options.slice(:force, :index, :find_params, :refresh, :scope, :strategy, :bulkify),
+              &block
+            )
 
-            return_hash[key].push(value)
+            return_hash[key].push(import_return)
 
             if merged_options[:verify_count] && merged_options[:verify_count_query]
               verify_index_doc_count(import_db_query, merged_options)
@@ -156,44 +154,46 @@ module ElasticsearchRepositories
         batch_start_at = Time.now
 
         # call adapter find_in_batches
-        adapter_importing_module.find_in_batches(self, **options.slice(:query, :scope, :find_params)) do |batch|
-
-          params = request_params.merge({
-            index: index,
-            body:  __batch_to_bulk(batch, strategy, bulkify)
-          })
+        with_refresh_interval(strategy, index, -1) do
+          adapter_importing_module.find_in_batches(self, **options.slice(:query, :scope, :find_params)) do |batch|
   
-          response = strategy.client.bulk params
-
-          # errors meta
-          errors = response['items'].select { |k, v| k.values.first['error'] }
-          meta_hash[:errors].push(errors.size)
-
-          # total meta
-          meta_hash[:total].push(batch.size)
-
-          # speed
-          items_size = response['items'].size
-          indexing_speed = batch_speed = nil
-          if items_size > 0
-            # indexing
-            if response['took'] > 0
-              indexing_speed = (items_size.fdiv(response['took']) * 1000).round(0)
-              meta_hash[:indexing_speed].push(indexing_speed)
+            params = request_params.merge({
+              index: index,
+              body:  __batch_to_bulk(batch, strategy, bulkify)
+            })
+    
+            response = strategy.client.bulk params
+  
+            # errors meta
+            errors = response['items'].select { |k, v| k.values.first['error'] }
+            meta_hash[:errors].push(errors.size)
+  
+            # total meta
+            meta_hash[:total].push(batch.size)
+  
+            # speed
+            items_size = response['items'].size
+            indexing_speed = batch_speed = nil
+            if items_size > 0
+              # indexing
+              if response['took'] > 0
+                indexing_speed = (items_size.fdiv(response['took']) * 1000).round(0)
+                meta_hash[:indexing_speed].push(indexing_speed)
+              end
+    
+              # batch
+              batch_speed = items_size.fdiv(Time.now - batch_start_at).round(0)
+              meta_hash[:batch_speed].push(batch_speed)
             end
   
-            # batch
-            batch_speed = items_size.fdiv(Time.now - batch_start_at).round(0)
-            meta_hash[:batch_speed].push(batch_speed)
+            yield(response, errors, indexing_speed, batch_speed) if block_given?
+      
+            if options[:batch_sleep] && options[:batch_sleep] > 0
+              sleep options[:batch_sleep]
+            end
+  
+            batch_start_at = Time.now
           end
-
-          yield(response, errors, indexing_speed, batch_speed) if block_given?
-    
-          if options[:batch_sleep] && options[:batch_sleep] > 0
-            sleep options[:batch_sleep]
-          end
-
-          batch_start_at = Time.now
         end
   
         strategy.refresh_index index: index if refresh
