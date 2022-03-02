@@ -30,147 +30,191 @@ module ElasticsearchRepositories
 
       # Reloads data into a model's indices
       # 
-      # By default it recreates the indices, if you want to only load data use `force: true` option
+      # By default it recreates the indices, if you want to only load data use `force: false` option
       #  
       # @param [DateTime] start_time start_time passed to reindexing_index_iterator
       # @param [DateTime] end_time end_time passed to reindexing_index_iterator
-      # @param [Hash] options
-      # @param options[:batch_size] [Integer]
-      # @param options[:batch_sleep] [Integer]
-      # @param options[:refresh] [Boolean]
-      # @param options[:force] [Boolean]
-      # @param options[:verify_count] [Boolean]
-      # @return [Integer] number of errors for all strategies
-      def reload_indices!(start_time: nil, end_time: nil, **options)
+      # @param [Hash] find_params
+      # @param [Integer] batch_sleep
+      # @param [Boolean] refresh
+      # @param [Boolean] force
+      # @param [Boolean] verify_count
+      # @return [Hash] total errors by strategy
+      def reload_indices!( start_time: nil, end_time: nil, find_params: { batch_size: 1000 }, batch_sleep: 2, force: true, refresh: false, verify_count: true, &block )
   
-        override_options = options.slice(
-          :batch_size,
-          :batch_sleep,
-          :force,
-          :refresh,
-          :verify_count
-        )
-        
-        default_options = {
-          batch_size: 1000,
-          batch_sleep: 2,
-          force: true,
-          refresh: false,
-          verify_count: true
+        override_options = {
+          find_params: find_params,
+          batch_sleep: batch_sleep,
+          force: force,
+          refresh: refresh,
+          verify_count: verify_count,
         }
-  
-        error_count = 0
 
         # call reindexing_index_iterator for all strategies
-        indexing_strategies.each do |strategy|
+        indexing_strategies.each_with_object({}) do |strategy, return_hash|
+          key = strategy.class.name
+          return_hash[key] = []
           strategy.reindexing_index_iterator(start_time, end_time) do |import_db_query, iterator_options|
 
             # extract allowed options from iterator
             iterator_options = iterator_options.slice(
-              :batch_size,
+              :find_params,
               :batch_sleep,
-              :es_query,
+              :verify_count_query,
               :force,
               # :import_db_query
               :index,
               :index_without_id,
               :mappings,
-              :pipeline,
-              :refresh,
+              :request_params,
               :refresh,
               :settings,
               :strategy,
-              :transform,
-              :type,
+              :bulkify,
               :verify_count
             )
 
             # merge final options
-            merged_options = default_options
-                .merge(iterator_options)
-                .merge(override_options)
+            merged_options = iterator_options.merge(override_options)
     
-            # ensure important options keys are present
-            [
-              :batch_size, :index, :es_query,
-              :strategy, :settings, :mappings
-            ].each do|name|
-              unless merged_options.key?(name)
-                raise ArgumentError.new("missing key #{name} in options while importing")
+            # ensure important options are present before recreating index
+            [ :index, :strategy, :settings, :mappings ].each do |name|
+              if merged_options[name].nil?
+                raise ArgumentError.new("missing option #{name} while importing")
               end
             end
-    
-            error_count += create_index_and_import_data(import_db_query, merged_options)
+            
+            strategy = merged_options[:strategy]
+            value = with_refresh_interval(strategy, merged_options[:index], -1) do
+              import(
+                query: -> {
+                  strategy.reindexing_includes_proc.call(import_db_query)
+                },
+                **merged_options.slice(:force, :index, :find_params, :refresh, :scope, :strategy, :bulkify),
+                &block
+              )
+            end
 
-            if merged_options[:verify_count]
+            return_hash[key].push(value)
+
+            if merged_options[:verify_count] && merged_options[:verify_count_query]
               verify_index_doc_count(import_db_query, merged_options)
             end
 
           end
         end
-  
-        return error_count
       end
 
       private
-  
-      # Creates an index, and calls #import
-      # When options[:force] is true, the index in deleted and recreated with
-      # mappings and settings
+
+      # Temporarily sets a value for 'refresh_interval' setting
       #
-      # @param [] import_db_query an active_record query relation
-      # @param [Hash] options
-      # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
-      # @param options[:index]      [string]
-      # @param options[:force]      [Boolean]
-      # @param options[:mappings]   [Hash]
-      # @param options[:settings]   [Hash]
-      # @param options[:batch_size] [Integer]
-      # @param options[:refresh]    [Boolean]
-      # @param options[:scope]      []
-      # @param options[:transform]  [Proc]
-      # @return [Integer] number of errors for all strategies
-      def create_index_and_import_data(import_db_query, options)
-        strategy = options[:strategy]
-        index_name = options[:index]
-  
-        # this is required because import does not support settings
-        # if force is true, the index in deleted and re-created
-        strategy.create_index({
-          force: options[:force],
-          index: index_name,
-          mappings: options[:mappings],
-          settings: options[:settings]
-        })
-  
-        # set refresh_interval to -1 to speed up indexing
+      def with_refresh_interval(strategy, index, interval)
+        current_settings = strategy.client.indices.get_settings(index: index)
+        current_interval = current_settings.dig(index, 'settings', 'index', 'refresh_interval') || '1s'
+
         strategy.client.indices.put_settings(
-          index: index_name,
-          body: { index: { refresh_interval: -1 } }
+          body: { index: { refresh_interval: interval } },
+          index: index
         )
-  
-        import(
-          force: false,
-          index: index_name,
-          batch_size: options[:batch_size],
-          refresh: options[:refresh],
-          scope: options[:scope], # for some reason it only works if the query is defined inside the 'query' lambda
-          strategy: strategy,
-          transform: options[:transform],
-          query: -> {
-            strategy.reindexing_includes_proc.call(import_db_query)
-          }
-        ) do |response|
-            puts "#{(response['items'].size.to_f * 1000 / response['took']).round(0)}/s"
-        end
+
+        yield
       ensure
-        # restore refresh_interval @todo restore to origina, not hardcoded 1s
+        # restore refresh_interval
         strategy.client.indices.put_settings(
-          index: index_name,
-          body: { index: { refresh_interval: '1s' } }
+          body: { index: { refresh_interval: current_interval } },
+          index: index
         )
       end
+
+      # @param [Hash] options
+      # @param options[:refresh]   [Boolean]
+      # @param options[:index]   [String]
+      # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
+      # @param options[:bulkify]   [Proc]
+      # @param options[:request_params]   [Hash]
+      # @param options[:return]   ['errors', 'count']
+      # @param options[:force]   [Boolean]
+      # @param options[:query]   [Proc]
+      # @param options[:scope]   [Symbol]
+      # @param options[:batch_sleep]   [Integer]
+      # @return [Hash] errors and total count
+      def import( refresh: false, index:, strategy:, bulkify: nil, request_params: {}, find_params: {}, **options, &block )
+        adapter_importing_module = Adapter.new(self).importing_mixin
+        bulkify ||= adapter_importing_module::BULKIFY_PROC
   
+        if options[:force]
+          strategy.create_index(
+            **options.slice(:index, :force, :mappings, :settings)
+          )
+        elsif !strategy.index_exists? index: index
+          raise ArgumentError,
+                "#{index} does not exist to be imported into. Use create_index or the :force option to create it."
+        end
+
+        meta_hash = { errors: [], total: [], indexing_speed: [], batch_speed: [] }
+        batch_start_at = Time.now
+
+        # call adapter find_in_batches
+        adapter_importing_module.find_in_batches(self, **options.slice(:query, :scope, :find_params)) do |batch|
+
+          params = request_params.merge({
+            index: index,
+            body:  __batch_to_bulk(batch, strategy, bulkify)
+          })
+  
+          response = strategy.client.bulk params
+
+          # errors meta
+          errors = response['items'].select { |k, v| k.values.first['error'] }
+          meta_hash[:errors].push(errors.size)
+
+          # total meta
+          meta_hash[:total].push(batch.size)
+
+          # speed
+          items_size = response['items'].size
+          indexing_speed = batch_speed = nil
+          if items_size > 0
+            # indexing
+            if response['took'] > 0
+              indexing_speed = (items_size.fdiv(response['took']) * 1000).round(0)
+              meta_hash[:indexing_speed].push(indexing_speed)
+            end
+  
+            # batch
+            batch_speed = items_size.fdiv(Time.now - batch_start_at).round(0)
+            meta_hash[:batch_speed].push(batch_speed)
+          end
+
+          yield(response, errors, indexing_speed, batch_speed) if block_given?
+    
+          if options[:batch_sleep] && options[:batch_sleep] > 0
+            sleep options[:batch_sleep]
+          end
+
+          batch_start_at = Time.now
+        end
+  
+        strategy.refresh_index index: index if refresh
+        
+        {
+          errors: meta_hash[:errors].sum,
+          total: meta_hash[:total].sum,
+          indexing_speed: meta_hash[:indexing_speed].sum.to_f / [meta_hash[:indexing_speed].size, 1].max,
+          batch_speed: meta_hash[:batch_speed].sum.to_f / [meta_hash[:batch_speed].size, 1].max
+        }
+      end
+  
+      # Maps an array of the model's instances by calling the bulkify Proc
+      #
+      # @param [Array] batch
+      # @param [ElasticsearchRepositories::BaseStrategy] strategy
+      # @param [Proc] bulkify
+      def __batch_to_bulk(batch, strategy, bulkify)
+        batch.map { |model| bulkify.call(model, strategy) }
+      end
+
       # verifies that an index contains the same amount of
       # documents as the database for a specific db and es query.
       #
@@ -178,11 +222,11 @@ module ElasticsearchRepositories
       # @param [Hash] options
       # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
       # @param options[:index]      [String]
-      # @param options[:es_query]   [Hash]
+      # @param options[:verify_count_query]   [Hash]
       # @return [Boolean]
       def verify_index_doc_count(import_db_query, options)
         index_name = options[:index]
-        es_query = options[:es_query]
+        verify_count_query = options[:verify_count_query]
   
         db_count = import_db_query
             .count
@@ -190,92 +234,15 @@ module ElasticsearchRepositories
         es_count = options[:strategy]
             .client
             .count({
-              body: es_query,
+              body: verify_count_query,
               index: index_name
             })['count']
         if db_count != es_count
-          puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{es_query}"
+          puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{verify_count_query}"
         else
-          puts "(DB=#{db_count}, ES=#{es_count}) for query: #{es_query}"
+          puts "(DB=#{db_count}, ES=#{es_count}) for query: #{verify_count_query}"
         end
         db_count == es_count
-      end
-
-      # @param [Hash] options
-      # @param options[:refresh]   [Boolean]
-      # @param options[:index]   [String]
-      # @param options[:type]   [String]
-      # @param options[:strategy]   [ElasticsearchRepositories::BaseStrategy]
-      # @param options[:transform]   [Proc]
-      # @param options[:pipeline]   []
-      # @param options[:return]   ['errors', 'count']
-      # @param options[:force]   [Boolean]
-      # @param options[:query]   [Proc]
-      # @param options[:scope]   [Symbol]
-      # @param options[:preprocess]   [Symbol]
-      # @param options[:batch_sleep]   [Integer]
-      # @return [Integer] errors count
-      def import(options={}, &block)
-        adapter_importing_module = Adapter.new(self).importing_mixin
-
-        errors       = []
-        refresh      = options.delete(:refresh)   || false
-        target_index = options.delete(:index)
-        target_type  = options.delete(:type)
-        strategy    = options.delete(:strategy)
-        transform    = options.delete(:transform) || adapter_importing_module::TRANSFORM_PROC
-        pipeline     = options.delete(:pipeline)
-        return_value = options.delete(:return)    || 'count'
-  
-        unless transform.respond_to?(:call)
-          raise ArgumentError,
-                "Pass an object responding to `call` as the :transform option, #{transform.class} given"
-        end
-  
-        if options.delete(:force)
-          strategy.create_index force: true, index: target_index
-        elsif !strategy.index_exists? index: target_index
-          raise ArgumentError,
-                "#{target_index} does not exist to be imported into. Use create_index or the :force option to create it."
-        end
-
-        adapter_importing_module.find_in_batches(self, options) do |batch|
-          params = {
-            index: target_index,
-            type:  target_type,
-            body:  __batch_to_bulk(batch, strategy, transform)
-          }
-  
-          params[:pipeline] = pipeline if pipeline
-  
-          response = strategy.client.bulk params
-  
-          yield response if block_given?
-  
-          errors +=  response['items'].select { |k, v| k.values.first['error'] }
-  
-          if options[:batch_sleep] && options[:batch_sleep] > 0
-            sleep options[:batch_sleep]
-          end
-        end
-  
-        strategy.refresh_index index: target_index if refresh
-  
-        case return_value
-          when 'errors'
-            errors
-          else
-            errors.size
-        end
-      end
-  
-      # Maps an array of the model's instances by calling the transform Proc
-      #
-      # @param [Array] batch
-      # @param [ElasticsearchRepositories::BaseStrategy] strategy
-      # @param [Proc] transform
-      def __batch_to_bulk(batch, strategy, transform)
-        batch.map { |model| transform.call(model, strategy) }
       end
 
     end
