@@ -58,8 +58,10 @@ module ElasticsearchRepositories
         end
 
         # Returns the total number of pages
-        def total_pages
-          size = response.dig('hits', 'hits')&.size || 0
+        def total_pages(size = nil)
+          size ||= search.definition&.dig(:body, 'size') # from query definition
+          raise ArgumentError.new("missing 'size' argument") unless size
+
           size == 0 ? 0 : (self.total / size.to_f).ceil
         end
 
