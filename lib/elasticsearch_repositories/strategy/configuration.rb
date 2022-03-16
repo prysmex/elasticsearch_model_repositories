@@ -130,6 +130,39 @@ module ElasticsearchRepositories
           mappings_hash
         end
 
+        # @example
+        #   {
+        #     "id" => "integer",
+        #     "created_by"=>"object",
+        #     "created_by.id"=>"integer",
+        #     "created_by.full_name.raw"=>"keyword",
+        #   }
+        #
+        # @return [Hash] flattened mappings
+        def to_flattened_hash
+          datatypes = [
+            'binary', 'boolean', 'date', 'date_nanos', 'dense_vector', 'flattened',
+            'geo_point', 'geo_shape', 'histogram', 'ip', 'join', 'keyword', 'nested',
+            'long', 'integer', 'short' 'byte', 'double', 'float', 'half_float', 'scaled_float', 'unsigned_long', # numeric datatypes
+            'object', 'percolator' 'point', 'range', 'rank_feature', 'rank_features', 'search_as_you_type',
+            'shape', 'sparce_vector', 'text', 'token_count' 'version'
+          ]
+
+          mappings_hash = self.to_hash
+          flattened = SuperHash::Utils.flatten_to_root(mappings_hash[:properties])
+    
+          # remove key value pairs that are not a datatype, like mapping options
+          flattened = flattened.select{|k,v| datatypes.include?(v) }
+    
+          flattened.transform_keys do |k|
+            # remove '.type' keyword from all keys
+            new_k = k.to_s.gsub(/\.type/, '')
+    
+            # remove object keywords
+            new_k.gsub(/\.?properties|\.type|\.?fields/, '')
+          end
+        end
+
       end
 
       #

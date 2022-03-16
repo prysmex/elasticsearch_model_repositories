@@ -77,15 +77,15 @@ class Person
   include ElasticsearchRepositories::Model
 
   after_commit -> (record) {
-    _call_indexing_methods('create', record)
+    call_indexing_methods('create', record)
   }, on: :create
 
   after_commit -> (record) {
-    _call_indexing_methods('update', record)
+    call_indexing_methods('update', record)
   }, on: :update
 
   after_commit -> (record) {
-    _call_indexing_methods('delete', record)
+    call_indexing_methods('delete', record)
   }, on: :destroy
 
   # You can register as many strategies as you want to a model.
@@ -104,12 +104,6 @@ class Person
 
   end
 
-  def _call_indexing_methods(event_name, record)
-    self.class.indexing_strategies.each do |strategy|
-      strategy.public_send(:index_record_to_es, event_name, record)
-    end
-  end
-
   # Define this method in case you want to customize index naming
   def self._base_index_name
     "#{Rails.env}_#{self.name.underscore.dasherize.pluralize}_"
@@ -123,6 +117,14 @@ class Person
       action,
       options
     )
+  end
+
+  private
+
+  def call_indexing_methods(event_name, record)
+    self.class.indexing_strategies.each do |strategy|
+      strategy.public_send(:index_record_to_es, event_name, record)
+    end
   end
 
 end
@@ -147,18 +149,18 @@ module Searchable
     include ElasticsearchRepositories::Model::InstanceMethods
 
     after_commit -> (record) {
-      _call_indexing_methods('create', record)
+      call_indexing_methods('create', record)
     }, on: :create
 
     after_commit -> (record) {
-      _call_indexing_methods('update', record)
+      call_indexing_methods('update', record)
     }, on: :update
 
     after_commit -> (record) {
-      _call_indexing_methods('delete', record)
+      call_indexing_methods('delete', record)
     }, on: :destroy
 
-    def _call_indexing_methods(event_name, record)
+    def call_indexing_methods(event_name, record)
       self.class.indexing_strategies.each do |strategy|
         strategy.public_send(:index_record_to_es, event_name, record)
       end

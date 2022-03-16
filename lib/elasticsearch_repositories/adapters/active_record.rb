@@ -75,15 +75,17 @@ module ElasticsearchRepositories
         # #
         # def self.included(base)
         #   base.class_eval do
-        #     after_commit lambda {  _call_indexing_methods('create', record)  },  on: :create
-        #     after_commit lambda {  _call_indexing_methods('update', record) },  on: :update
-        #     after_commit lambda {  _call_indexing_methods('delete', record) },  on: :destroy
-      
-        #     def _call_indexing_methods(event_name, record)
+        #
+        #     after_commit lambda {  call_indexing_methods('create', record)  },  on: :create
+        #     after_commit lambda {  call_indexing_methods('update', record) },  on: :update
+        #     after_commit lambda {  call_indexing_methods('delete', record) },  on: :destroy
+        #
+        #     def call_indexing_methods(event_name, record)
         #       self.class.indexing_strategies.each do |strategy|
         #         strategy.public_send(:index_record_to_es, event_name, record)
         #       end
         #     end
+        #
         #   end
         # end
       end

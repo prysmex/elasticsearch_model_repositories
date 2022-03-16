@@ -16,17 +16,16 @@ module ElasticsearchRepositories
       #
       # @return [void]
       def index_record_to_es(action, record)
-        record._index_document(
-          action,
-          {
-            index: target_index_name(record),
-            mappings: mappings.to_hash,
-            settings: settings.to_hash,
-            id: record.id,
-            body: as_indexed_json(record),
-            index_without_id: index_without_id
-          }
-        )
+        indexer_options = {
+          index: target_index_name(record),
+          mappings: mappings.to_hash,
+          settings: settings.to_hash,
+          id: record.id,
+          body: as_indexed_json(record),
+          index_without_id: index_without_id
+        }
+        yield indexer_options if block_given?
+        record._index_document(action, indexer_options)
       end
 
     end
