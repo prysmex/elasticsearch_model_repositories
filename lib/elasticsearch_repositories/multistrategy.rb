@@ -16,7 +16,7 @@ module ElasticsearchRepositories
       end
 
       # Get the common client for all strategies
-      # @return Elasticsearch::Transport::Client
+      # @return Elastic::Transport::Client
       def client
         _strategies = strategies.map { |s| s.client }.uniq
         if _strategies.size == 1

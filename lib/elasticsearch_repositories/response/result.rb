@@ -11,11 +11,11 @@ module ElasticsearchRepositories
         self.dig('_source', 'id')&.to_s || self['_id']
       end
 
-      # Return document `_type` as `_type`
-      #
-      def type
-        self['_type']
-      end
+      # # Return document `_type` as `_type`
+      # #
+      # def type
+      #   self['_type']
+      # end
 
     end
   end

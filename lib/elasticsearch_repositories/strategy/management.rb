@@ -36,8 +36,8 @@ module ElasticsearchRepositories
       # @return [Hash, nil] nil if not found
       def delete_index(index: self.current_index_name, **options)
         @client.indices.delete(index: index, **options)
-      rescue Elasticsearch::Transport::Transport::Errors::NotFound => e
-        client.transport.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.transport.logger
+      rescue Elastic::Transport::Transport::Errors::NotFound => e
+        client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
       end
 
       # Returns true if the index exists
@@ -56,8 +56,8 @@ module ElasticsearchRepositories
       def refresh_index(index: self.current_index_name, **options)
         self.client.indices.refresh(index: index, **options)
 
-      rescue Elasticsearch::Transport::Transport::Errors::NotFound => e
-        client.transport.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.transport.logger
+      rescue Elastic::Transport::Transport::Errors::NotFound => e
+        client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
       end
       
     end

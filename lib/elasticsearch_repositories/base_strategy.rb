@@ -28,7 +28,7 @@ module ElasticsearchRepositories
     attr_reader :name
 
     # @param [YourModel] host_class Class that uses the strategy
-    # @param [Elasticsearch::Transport::Client] client elasticsearch client
+    # @param [Elastic::Transport::Client] client elasticsearch client
     # @param [String] name the identifier of the strategy
     # @param [Proc] &block used to configure the strategy
     #

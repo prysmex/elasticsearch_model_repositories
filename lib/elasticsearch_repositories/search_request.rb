@@ -11,7 +11,6 @@ module ElasticsearchRepositories
       @options = options
 
       __index_name    = options[:index] || strategy.search_index_name
-      __document_type = nil
 
       case
         # search query: ...
@@ -28,9 +27,9 @@ module ElasticsearchRepositories
       end
 
       if body
-        @definition = { index: __index_name, type: __document_type, body: body }.update options
+        @definition = { index: __index_name, body: body }.update options
       else
-        @definition = { index: __index_name, type: __document_type, q: q }.update options
+        @definition = { index: __index_name, q: q }.update options
       end
     end
 
