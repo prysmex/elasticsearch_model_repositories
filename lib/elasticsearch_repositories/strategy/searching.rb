@@ -63,13 +63,14 @@ module ElasticsearchRepositories
       # Calls search, then scrolls
       #
       # @param [] query_or_payload (see +ElasticsearchRepositories::SearchRequest+)
-      # @param [Hash] options to be passed to +SearchRequest+ and +Response::Response+
+      # @param [Hash] search_options to be passed to +SearchRequest+ and +Response::Response+
+      # @param [Hash] scroll_options
       # @return [Array<ElasticsearchRepositories::Response::Response>]
-      def search_and_scroll(query_or_payload, options = {}, &block)
-        options[:scroll] ||= SCROLL_DURATION
+      def search_and_scroll(query_or_payload, search_options = {}, scroll_options = {}, &block)
+        scroll_options[:scroll] = search_options[:scroll] ||= SCROLL_DURATION
 
-        response = search(query_or_payload, options)
-        responses = scroll(response, options, &block)
+        response = search(query_or_payload, search_options)
+        responses = scroll(response, scroll_options, &block)
         [response] + responses
       end
   
