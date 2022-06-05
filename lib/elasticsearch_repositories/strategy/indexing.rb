@@ -24,8 +24,9 @@ module ElasticsearchRepositories
           body: as_indexed_json(record),
           index_without_id: index_without_id
         }
-        yield indexer_options if block_given?
-        record._index_document(action, indexer_options)
+
+        yield(indexer_options, action, record) if block_given?
+        record.send(:index_document, action, indexer_options)
       end
 
     end

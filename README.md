@@ -109,17 +109,17 @@ class Person
     "#{Rails.env}_#{self.name.underscore.dasherize.pluralize}_"
   end
 
+  private
+
   # This method is called by the gem and needs to be implemented
   # Here is where you actually index to ES, you may call a Sidekiq worker
   # that asyncronously indexes the record.
-  def _index_document(action, options={})
+  def index_document(action, options={})
     SomeIndexerWorker.perform_later(
       action,
       options
     )
   end
-
-  private
 
   def call_indexing_methods(event_name, record)
     self.class.indexing_strategies.each do |strategy|
@@ -160,13 +160,15 @@ module Searchable
       call_indexing_methods('delete', record)
     }, on: :destroy
 
+    private
+
     def call_indexing_methods(event_name, record)
       self.class.indexing_strategies.each do |strategy|
         strategy.public_send(:index_record_to_es, event_name, record)
       end
     end
 
-    def _index_document(action, options={})
+    def index_document(action, options={})
       SomeIndexerWorker.perform_later(
         action,
         options

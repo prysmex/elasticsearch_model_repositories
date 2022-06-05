@@ -341,17 +341,19 @@ module ElasticsearchRepositories
       # Indexes the record to all indices of it's classes strategies
       #
       # @return [void]
-      def index_to_all_indices
+      def index_to_all_indices(&block)
         self.class.indexing_strategies.each do |strategy|
-          strategy.index_record_to_es('create', self)
+          strategy.index_record_to_es('create', self, &block)
         end
       end
+
+      private
   
       # Override this method on your model to handle indexing
       #
       # @return [void]
-      def _index_document(action, options)
-        raise NotImplementedError('need to implement own _index_document method')
+      def index_document(action, options)
+        raise NotImplementedError('need to implement own index_document method')
       end
 
     end
