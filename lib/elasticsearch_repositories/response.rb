@@ -59,8 +59,12 @@ module ElasticsearchRepositories
 
         # Returns the total number of pages
         def total_pages(size = nil)
-          size ||= search.definition&.dig(:body, 'size') # from query definition
-          raise ArgumentError.new("missing 'size' argument") unless size
+          size ||= search.definition&.dig(:body, :size) # from query definition
+          
+          unless size
+            msg = "missing 'size' argument, pass it to .total_pages(size) or ensure query definition contains :size"
+            raise ArgumentError.new(msg)
+          end
 
           size == 0 ? 0 : (self.total / size.to_f).ceil
         end
