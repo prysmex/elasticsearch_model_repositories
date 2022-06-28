@@ -16,6 +16,8 @@ require_relative 'elasticsearch_repositories/registry'
 require_relative 'elasticsearch_repositories/search_request'
 
 # strategy
+require_relative 'elasticsearch_repositories/strategy/configuration/mappings'
+require_relative 'elasticsearch_repositories/strategy/configuration/settings'
 require_relative 'elasticsearch_repositories/strategy/configuration'
 require_relative 'elasticsearch_repositories/strategy/importing'
 require_relative 'elasticsearch_repositories/strategy/indexing'

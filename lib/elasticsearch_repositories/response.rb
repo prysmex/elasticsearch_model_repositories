@@ -30,6 +30,7 @@ module ElasticsearchRepositories
         def response
           with_cache('response') do
             search.execute!
+            @search_size = search.definition&.dig(:body, :size) # from query definition
           end
         end
 
@@ -58,9 +59,7 @@ module ElasticsearchRepositories
         end
 
         # Returns the total number of pages
-        def total_pages(size = nil)
-          size ||= search.definition&.dig(:body, :size) # from query definition
-          
+        def total_pages(size = @search_size)
           unless size
             msg = "missing 'size' argument, pass it to .total_pages(size) or ensure query definition contains :size"
             raise ArgumentError.new(msg)

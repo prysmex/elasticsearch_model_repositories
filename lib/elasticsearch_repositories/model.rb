@@ -257,19 +257,19 @@ module ElasticsearchRepositories
       # @param [String] name the identifier of the strategy, can be used if updating the strategy later on is desired
       # @return [void]
       def register_strategy(strategy_klass, name='main', &block)
+        self.indexing_strategies ||= []
 
-        if self.is_a?(Class) && !::ElasticsearchRepositories::ClassRegistry.all.map(&:to_s).include?(self.name)
-          ::ElasticsearchRepositories::ClassRegistry.add(self)
+        # raise error for diplicate name
+        if indexing_strategies.any?{|s| s.name == name }
+          raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
         end
 
-        strategies = indexing_strategies || []
-        strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
-        if strategy
-          raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
-        else
-          strategy = strategy_klass.new(self, ::ElasticsearchRepositories.client, name, &block)
-          strategies.push(strategy)
-          self.instance_variable_set('@indexing_strategies', strategies)
+        strategy = strategy_klass.new(self, ::ElasticsearchRepositories.client, name, &block)
+        indexing_strategies.push(strategy)
+
+        # add class to registry unless already registered
+        if self.is_a?(Class) && !::ElasticsearchRepositories::ClassRegistry.all.map(&:to_s).include?(self.name)
+          ::ElasticsearchRepositories::ClassRegistry.add(self)
         end
       end
 
@@ -278,16 +278,17 @@ module ElasticsearchRepositories
       # @param [String] name the identifier of the strategy
       # @return [void]
       def update_strategy(name, &block)
-        strategies = indexing_strategies || []
-        strategy = strategies.find{|s| s.instance_variable_get('@name') == name }
-        if strategy
-          strategy.update(&block)
-        else
+        self.indexing_strategies ||= []
+
+        strategy = indexing_strategies.find{|s| s.name == name }
+        if !strategy
           raise StandardError.new("strategy '#{name}' not found on model #{self.name}")
         end
+
+        strategy.update(&block)
       end
 
-      # Returns the fir strategy (for now)
+      # Returns the first strategy (for now)
       #
       # @return [BaseStrategy]
       def default_indexing_strategy

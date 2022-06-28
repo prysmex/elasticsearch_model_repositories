@@ -10,8 +10,6 @@ module ElasticsearchRepositories
       @strategy   = strategy
       @options = options
 
-      __index_name    = options[:index] || strategy.search_index_name
-
       case
         # search query: ...
         when query_or_payload.respond_to?(:to_hash)
@@ -26,10 +24,12 @@ module ElasticsearchRepositories
           q = query_or_payload
       end
 
+      __index_name    = options[:index] || strategy.search_index_name
+
       if body
-        @definition = { index: __index_name, body: body }.update options
+        @definition = options.merge({ index: __index_name, body: body })
       else
-        @definition = { index: __index_name, q: q }.update options
+        @definition = options.merge({ index: __index_name, q: q })
       end
     end
 
