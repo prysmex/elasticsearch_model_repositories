@@ -63,6 +63,8 @@ Here is a list of methods that you may want to consider overriding on your custo
 - reindexing_index_iterator
 - index_without_id
 - as_indexed_json
+- index_record_to_es
+- reindexing_includes_proc
 
 Now lets register this strategy into a model.
 It is important to add the following lines to your model that provide the methods for registering strategies, indexing, reindexing, and some other utilities.
@@ -336,6 +338,53 @@ location_response = ElasticsearchRepositories.search(
   [Person].map(&:default_indexing_strategy) #array of strategies to search
 )
 ```
+
+### Callbacks
+
+You can register callbacks powered by `ActiveSupport::Callbacks` on your strategy.
+
+```ruby
+class Simple < ElasticsearchRepositories::BaseStrategy
+
+  # modify your request if needed
+  set_callback :execute_search, :before do |dup_context|
+    search_request = dup_context.search_request
+    # do something
+  end
+
+end
+```
+
+### Synthatic sugar
+
+Instead of overriding methods with `def target_index_name ... end` you can
+return a hash on the `configure` class method. This is simply to make it
+clear which methods are being overriden and which are custom.
+
+```ruby
+class Simple < ElasticsearchRepositories::BaseStrategy
+
+  configure {
+    target_index_name: ->(record) {
+      build_dated_index_name(record.created_at)
+    },
+
+    search_index_name: ->(record) {
+      build_dated_index_name(Time.now).sub(/\d.*/, '*')
+    },
+
+    current_index_name: ->(record) {
+      build_dated_index_name(Time.now)
+    }
+  }
+
+  def custom_method
+  end
+    
+end
+```
+
+
 
 ## Development
 
