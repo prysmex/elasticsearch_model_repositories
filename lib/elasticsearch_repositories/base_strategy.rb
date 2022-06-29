@@ -14,9 +14,15 @@ module ElasticsearchRepositories
   #
   # @abstract
   #
+  # @warning
+  #
+  #   This class instances are designed to be 'registered' to a model
+  #   which can lead to issues regarding threat safety. Please refrain from
+  #   adding state to the instance
+  #
   class BaseStrategy
 
-    include ElasticsearchRepositories::Strategy::Configuration::Methods
+    include ElasticsearchRepositories::Strategy::Configuration
     include ElasticsearchRepositories::Strategy::Importing
     include ElasticsearchRepositories::Strategy::Indexing
     include ElasticsearchRepositories::Strategy::Management
@@ -26,6 +32,54 @@ module ElasticsearchRepositories
     attr_reader :host_class
     attr_reader :client
     attr_reader :name
+
+    class << self
+
+      # Synthatic sugar for overriding methods when subclassing.
+      # The advantage is that it gives a 'clearer' visual aid
+      # to someone reading code that some known method is being overriden.
+      #
+      # It also validates that methods are indeed known
+      #
+      # @example
+      #
+      # class Simple < ElasticsearchRepositories::BaseStrategy
+      #   configure {
+      #     search_index_name: ->(record) {
+      #       host_class._base_index_name
+      #     },
+      #     target_index_name: ->(record) {
+      #       search_index_name
+      #     }
+      #   }
+      # end
+      #
+      # instead of
+      #
+      # class Simple < ElasticsearchRepositories::BaseStrategy
+      #   def search_index_name(record)
+      #     host_class._base_index_name
+      #   end
+      #
+      #   def target_index_name(record)
+      #     search_index_name
+      #   end
+      # end
+      #
+      # @param [Hash{Symbol => lambda}]
+      # @return [void]
+      def configure(hash)
+        known_methods = self.public_instance_methods - Class.public_instance_methods
+        hash.each do |name, proc|
+          unless known_methods.include?(name.to_sym)
+            msg = "configure only accepts known methods: #{known_methods.join(', ')}. Got: #{name}"
+            raise NoMethodError.new(msg)
+          end
+          define_method(name, &proc)
+        end
+      end
+
+    end
 
     # @param [YourModel] host_class Class that uses the strategy
     # @param [Elastic::Transport::Client] client elasticsearch client

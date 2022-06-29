@@ -29,8 +29,8 @@ module ElasticsearchRepositories
         # @return [Hash]
         def response
           with_cache('response') do
-            search.execute!
             @search_size = search.definition&.dig(:body, :size) # from query definition
+            search.execute!
           end
         end
 

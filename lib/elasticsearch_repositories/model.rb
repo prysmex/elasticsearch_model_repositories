@@ -260,7 +260,7 @@ module ElasticsearchRepositories
         self.indexing_strategies ||= []
 
         # raise error for diplicate name
-        if indexing_strategies.any?{|s| s.name == name }
+        if get_strategy(name)
           raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
         end
 
@@ -278,14 +278,18 @@ module ElasticsearchRepositories
       # @param [String] name the identifier of the strategy
       # @return [void]
       def update_strategy(name, &block)
-        self.indexing_strategies ||= []
-
-        strategy = indexing_strategies.find{|s| s.name == name }
+        strategy = get_strategy(name)
         if !strategy
           raise StandardError.new("strategy '#{name}' not found on model #{self.name}")
         end
 
         strategy.update(&block)
+      end
+
+      # @param [String] name
+      # @return [NilClass|BaseStrategy]
+      def get_strategy(name)
+        indexing_strategies&.find{|s| s.name == name }
       end
 
       # Returns the first strategy (for now)
@@ -339,13 +343,26 @@ module ElasticsearchRepositories
 
     module InstanceMethods
 
-      # Indexes the record to all indices of it's classes strategies
+      # Indexes the record to all of it's classes strategies
       #
+      # @param [String] action
       # @return [void]
-      def index_to_all_indices(&block)
+      def index_with_all_strategies(action = 'create', &block)
         self.class.indexing_strategies.each do |strategy|
-          strategy.index_record_to_es('create', self, &block)
+          index_with_strategy(action, strategy, &block)
+          strategy.index_record_to_es(action, self, &block)
         end
+      end
+
+      # Indexes the record with one strategy
+      #
+      # @param [String] action
+      # @param [String|BaseStrategy] strategy, name or instance
+      # @return [void]
+      def index_with_strategy(action = 'create', strategy, &block)
+        strategy = self.class.get_strategy(strategy) unless strategy.is_a? BaseStrategy
+
+        strategy.index_record_to_es(action, self, &block)
       end
 
       private
