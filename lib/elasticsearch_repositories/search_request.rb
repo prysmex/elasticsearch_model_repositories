@@ -1,13 +1,16 @@
 module ElasticsearchRepositories
   class SearchRequest
-    attr_reader :strategy, :definition
+    attr_reader :strategy_or_wrapper, :definition
+    
+    include ActiveSupport::Callbacks
+    define_callbacks :execute
 
-    # @param strategy [Class] The strategy to be used
+    # @param strategy_or_wrapper [BaseStrategy|MultistrategyWrapper] instance
     # @param query_or_payload [String,Hash,Object] The search request definition
     #                                              (String, Hash, or object responding to `to_hash`)
     # @param options [Hash] Optional parameters to be passed to the Elasticsearch client
-    def initialize(strategy, query_or_payload, options={})
-      @strategy   = strategy
+    def initialize(strategy_or_wrapper, query_or_payload, options={})
+      @strategy_or_wrapper   = strategy_or_wrapper
 
       case
         # search query: ...
@@ -23,7 +26,7 @@ module ElasticsearchRepositories
           q = query_or_payload
       end
 
-      __index_name    = options[:index] || strategy.search_index_name
+      __index_name    = options[:index] || strategy_or_wrapper.search_index_name
 
       if body
         @definition = options.merge({ index: __index_name, body: body })
@@ -44,10 +47,8 @@ module ElasticsearchRepositories
     #
     # @return [Hash] The response from Elasticsearch
     def execute!
-      dup_strategy = strategy.dup
-      dup_strategy.current_search_request = self
-      dup_strategy.run_callbacks :execute_search do
-        strategy.client.search(@definition)
+      run_callbacks :execute do
+        strategy_or_wrapper.client.search(@definition)
       end
     end
 

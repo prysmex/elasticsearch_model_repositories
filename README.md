@@ -341,17 +341,11 @@ location_response = ElasticsearchRepositories.search(
 
 ### Callbacks
 
-You can register callbacks powered by `ActiveSupport::Callbacks` on your strategy.
+You can register callbacks on an initializer powered by `ActiveSupport::Callbacks`
 
 ```ruby
-class Simple < ElasticsearchRepositories::BaseStrategy
-
-  # modify your request if needed
-  set_callback :execute_search, :before do |dup_context|
-    search_request = dup_context.search_request
-    # do something
-  end
-
+ElasticsearchRepositories::SearchRequest.set_callback :execute, :before do |search_request|
+  # do something
 end
 ```
 
@@ -381,6 +375,25 @@ class Simple < ElasticsearchRepositories::BaseStrategy
   def custom_method
   end
     
+end
+```
+
+```ruby
+class YourModel
+  register_strategy Searchable::Strategies::Simple do
+
+    set_mappings({dynamic: 'false'}) do
+      ...
+    end
+
+    configure_instance {
+      as_indexed_json: ->(record) {
+        super(record)
+      },
+      ...
+    }
+
+  end
 end
 ```
 

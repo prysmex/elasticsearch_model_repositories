@@ -22,10 +22,6 @@ module ElasticsearchRepositories
   #
   class BaseStrategy
 
-    include ActiveSupport::Callbacks
-    attr_accessor :current_search_request
-    define_callbacks :execute_search
-
     include ElasticsearchRepositories::Strategy::Configuration
     include ElasticsearchRepositories::Strategy::Importing
     include ElasticsearchRepositories::Strategy::Indexing
@@ -36,6 +32,12 @@ module ElasticsearchRepositories
     attr_reader :host_class
     attr_reader :client
     attr_reader :name
+
+    CONFIGURABLE_METHODS = %i(
+      target_index_name search_index_name current_index_name
+      reindexing_index_iterator index_without_id as_indexed_json
+      index_record_to_es reindexing_includes_proc
+    ).freeze
 
     class << self
 
@@ -73,10 +75,9 @@ module ElasticsearchRepositories
       # @param [Hash{Symbol => lambda}]
       # @return [void]
       def configure(hash)
-        known_methods = self.public_instance_methods - Class.public_instance_methods
         hash.each do |name, proc|
-          unless known_methods.include?(name.to_sym)
-            msg = "configure only accepts known methods: #{known_methods.join(', ')}. Got: #{name}"
+          unless CONFIGURABLE_METHODS.include?(name.to_sym)
+            msg = "configure only accepts known methods: #{CONFIGURABLE_METHODS.join(', ')}. Got: #{name}"
             raise NoMethodError.new(msg)
           end
           define_method(name, &proc)
@@ -101,6 +102,20 @@ module ElasticsearchRepositories
     # @return [void]
     def update(&block)
       self.instance_eval(&block) if block_given?
+    end
+
+    # Same as class method 'configure' but for an instance
+    #
+    # @param [Hash{Symbol => lambda}]
+    # @return [void]
+    def configure_instance(hash)
+      hash.each do |name, proc|
+        unless CONFIGURABLE_METHODS.include?(name.to_sym)
+          msg = "configure only accepts known methods: #{CONFIGURABLE_METHODS.join(', ')}. Got: #{name}"
+          raise NoMethodError.new(msg)
+        end
+        define_singleton_method(name, &proc)
+      end
     end
 
   end

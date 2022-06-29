@@ -6,10 +6,10 @@ module ElasticsearchRepositories
     module ActiveRecord
 
       # register adapter
-      Adapter.register self, lambda {|klass|
+      Adapter.register self, lambda {|klass_or_klasses|
         !!defined?(::ActiveRecord::Base) &&
-            klass.respond_to?(:ancestors) &&
-            klass.ancestors.include?(::ActiveRecord::Base)
+            klass_or_klasses.respond_to?(:ancestors) &&
+            klass_or_klasses.ancestors.include?(::ActiveRecord::Base)
       }
 
       # Module for implementing methods and logic related to fetching records from the database
@@ -18,7 +18,7 @@ module ElasticsearchRepositories
 
         # @return [ActiveRecord::Relation]
         def records
-          sql_records = klass.where(klass.primary_key => ids)
+          sql_records = klass_or_klasses.where(klass_or_klasses.primary_key => ids)
           sql_records = sql_records.includes(self.options[:includes]) if self.options[:includes]
 
           # Re-order records based on the order from Elasticsearch hits

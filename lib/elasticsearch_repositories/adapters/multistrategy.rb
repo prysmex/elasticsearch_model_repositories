@@ -8,7 +8,7 @@ module ElasticsearchRepositories
     module Multistrategy
 
       # register adapter
-      Adapter.register self, lambda { |klass| klass.is_a? Array }
+      Adapter.register self, lambda { |klass_or_klasses| klass_or_klasses.is_a? Array }
 
       module Records
 
@@ -26,7 +26,7 @@ module ElasticsearchRepositories
           # }
           ids_by_type = response.results.each_with_object({}) do |result, obj|
             type = __type_for_result(result)
-            model = type_model_cache[type] ||= response.strategy.host_class.detect do |model|
+            model = type_model_cache[type] ||= response.strategy_or_wrapper.host_class.detect do |model|
               __model_to_type(model) == type
             end
             next if model.nil?
@@ -99,7 +99,7 @@ module ElasticsearchRepositories
           end
         end
 
-        # Returns the adapter registered for a particular `klass` or `nil` if not available
+        # Returns the adapter registered for a particular klass
         #
         # @api private
         #

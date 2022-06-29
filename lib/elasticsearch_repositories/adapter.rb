@@ -1,20 +1,14 @@
 module ElasticsearchRepositories
-  # Contains an adapter which provides OxM-specific implementations for common behaviour:
+  # Contains a registry for ElasticsearchRepositories::Adapters::* along with a
+  # lambda that is used to match an adapter
   #
   # * {Adapter#records_mixin   Fetching records from the database}
   # * {Adapter#importing_mixin Efficient bulk loading from the database}
   #
   # @see ElasticsearchRepositories::Adapters::ActiveRecord
   #
-
-  # Contains an adapter for specific OxM or architecture.
   #
   class Adapter
-    attr_reader :klass
-
-    def initialize(klass)
-      @klass = klass
-    end
 
     class << self
 
@@ -31,7 +25,7 @@ module ElasticsearchRepositories
       #       #
       #       module Records
       #         def records
-      #           klass.all(id: @ids)
+      #           klass_or_klasses.all(id: @ids)
       #         end
       #
       #         # ...
@@ -42,8 +36,8 @@ module ElasticsearchRepositories
       #     #
       #     ElasticsearchRepositories::Adapter.register(
       #       DataMapperAdapter,
-      #       lambda { |klass|
-      #         defined?(::DataMapper::Resource) and klass.ancestors.include?(::DataMapper::Resource)
+      #       lambda { |klass_or_klasses|
+      #         defined?(::DataMapper::Resource) and klass_or_klasses.ancestors.include?(::DataMapper::Resource)
       #       }
       #     )
       def register(name, condition)
@@ -57,26 +51,33 @@ module ElasticsearchRepositories
       
     end
 
-    # Return the module with {Default::Records} interface implementation
+    attr_reader :klass_or_klasses
+
+    # @param [Class,Array<Class>] klass_or_klasses
+    def initialize(klass_or_klasses)
+      @klass_or_klasses = klass_or_klasses
+    end
+
+    # Return the Records module from the matching adapter
     #
-    # @api private
+    # @return [Module]
     def records_mixin
-      adapter.const_get(:Records)
+      match_adapter.const_get(:Records)
     end
 
-    # Return the module with {Default::Importing} interface implementation
+    # Return the Importing module from the matching adapter
     #
-    # @api private
+    # @return [Module]
     def importing_mixin
-      adapter.const_get(:Importing)
+      match_adapter.const_get(:Importing)
     end
 
-    # Returns the adapter module
+    # Returns the adapter module that first evaluates its registered condition as true 
     #
-    # @api private
-    def adapter
-      @adapter ||= begin
-        self.class.adapters.find( lambda {[]} ) { |name, condition| condition.call(klass) }.first
+    # @return [Module] ElasticsearchRepositories::Adapters::*
+    def match_adapter
+      @matched_adapter ||= begin
+        self.class.adapters.find( lambda {[]} ) { |name, condition| condition.call(klass_or_klasses) }.first
       end
     end
 

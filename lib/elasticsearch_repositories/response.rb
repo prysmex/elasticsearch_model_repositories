@@ -6,19 +6,19 @@ module ElasticsearchRepositories
       # Implements Enumerable and forwards its methods to the {#results} object.
       #
       class Response
-        attr_reader :strategy, :search
+        attr_reader :strategy_or_wrapper, :search
 
         include Enumerable
 
         #ToDo 'delegate' is rails specific
         delegate :each, :empty?, :size, :slice, :[], :to_ary, to: :results
 
-        # @param [ElasticsearchRepositories::BaseStrategy] strategy <description>
-        # @param [ElasticsearchRepositories::SearchRequest] search <description>
+        # @param [BaseStrategy|MultistrategyWrapper] strategy_or_wrapper
+        # @param [ElasticsearchRepositories::SearchRequest] search
         # @param [Hash] options
         # @option options [Boolean] :use_cache
-        def initialize(strategy, search, options={})
-          @strategy     = strategy
+        def initialize(strategy_or_wrapper, search, options={})
+          @strategy_or_wrapper     = strategy_or_wrapper
           @search       = search
           @use_cache    = options[:use_cache] || true
           @cache        = {}
@@ -48,7 +48,7 @@ module ElasticsearchRepositories
         # @return [Records]
         def records(options = {})
           with_cache('records') do
-            Records.new(strategy.host_class, self, options)
+            Records.new(strategy_or_wrapper.host_class, self, options)
           end
         end
 

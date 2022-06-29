@@ -13,16 +13,18 @@ module ElasticsearchRepositories
 
       attr_accessor :options
 
-      attr_reader :klass, :response
+      attr_reader :klass_or_klasses, :response
 
-      def initialize(klass, response, options={})
+      # @param [Class,Array<Class>] klass_or_klasses
+      # @param [ElasticsearchRepositories::Response::Response] response
+      def initialize(klass_or_klasses, response, options={})
         
-        @klass = klass
+        @klass_or_klasses = klass_or_klasses
         @response = response
 
         # Include module provided by the adapter in the singleton class
         #
-        adapter = Adapter.new(klass)
+        adapter = Adapter.new(klass_or_klasses)
         self.singleton_class.include adapter.records_mixin
 
         self.options = options
