@@ -22,6 +22,10 @@ module ElasticsearchRepositories
   #
   class BaseStrategy
 
+    include ActiveSupport::Callbacks
+    attr_accessor :current_search_request
+    define_callbacks :execute_search
+
     include ElasticsearchRepositories::Strategy::Configuration
     include ElasticsearchRepositories::Strategy::Importing
     include ElasticsearchRepositories::Strategy::Indexing

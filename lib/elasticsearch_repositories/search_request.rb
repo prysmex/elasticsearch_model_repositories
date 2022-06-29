@@ -1,6 +1,6 @@
 module ElasticsearchRepositories
   class SearchRequest
-    attr_reader :strategy, :definition, :options
+    attr_reader :strategy, :definition
 
     # @param strategy [Class] The strategy to be used
     # @param query_or_payload [String,Hash,Object] The search request definition
@@ -8,7 +8,6 @@ module ElasticsearchRepositories
     # @param options [Hash] Optional parameters to be passed to the Elasticsearch client
     def initialize(strategy, query_or_payload, options={})
       @strategy   = strategy
-      @options = options
 
       case
         # search query: ...
@@ -35,9 +34,22 @@ module ElasticsearchRepositories
 
     # Performs the request and returns the response from client
     #
+    # @note ActiveSupport::Callbacks only give us access to the
+    #   strategy instance and we need the search definition.
+    #
+    #   Since strategies are stored in a model class instance
+    #   variable, we cannot set state without compromising Thread
+    #   safety. For that reason, we duplicate the strategy to set
+    #   the definition and then run the callbacks
+    #
     # @return [Hash] The response from Elasticsearch
     def execute!
-      strategy.client.search(@definition)
+      dup_strategy = strategy.dup
+      dup_strategy.current_search_request = self
+      dup_strategy.run_callbacks :execute_search do
+        strategy.client.search(@definition)
+      end
     end
+
   end
 end

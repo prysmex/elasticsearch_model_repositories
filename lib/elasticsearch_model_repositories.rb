@@ -4,6 +4,7 @@ require_relative 'elasticsearch_repositories/version'
 require 'elasticsearch'
 
 # activesupport
+require 'active_support/callbacks'
 require 'active_support/core_ext/module/delegation'
 
 # adapter
