@@ -59,6 +59,35 @@ module ElasticsearchRepositories
       rescue Elastic::Transport::Transport::Errors::NotFound => e
         client.transport.logger.debug("[!!!] Index #{index} does not exist (#{e.class})") if client.transport.logger
       end
+
+      # Lists all indices.
+      #
+      # If use_search_index_name is true, indices will be fetched using
+      # elastisearch's cat api and the search_index_name. Otherwise,
+      # the reindexing_index_iterator will be used
+      #
+      # @param [Boolean] use_search_index_name 
+      # @return [Array<String>]
+      def all_indices(*args, use_search_index_name: false)
+        array = []
+
+        if use_search_index_name
+          # iterate with search_index_name
+          self.client.cat.indices(
+            index: self.search_index_name, h: ['index', 'docs.count']
+          ).each_line do |line|
+            index, count = line.chomp.split("\s")
+            array.push(index) if index.present?
+          end
+        else
+          # iterate with reindexing_index_iterator
+          self.reindexing_index_iterator(*args) do |import_db_query, iterator_options|
+            array.push(iterator_options[:index]) if iterator_options[:index]
+          end
+        end
+
+        array
+      end
       
     end
 

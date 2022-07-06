@@ -40,7 +40,16 @@ module ElasticsearchRepositories
       # @param [Boolean] force
       # @param [Boolean] verify_count
       # @return [Hash] total errors by strategy
-      def reload_indices!( start_time: nil, end_time: nil, find_params: { batch_size: 1000 }, batch_sleep: 2, force: true, refresh: false, verify_count: true, &block )
+      def reload_indices!(
+        start_time: nil,
+        end_time: nil,
+        find_params: { batch_size: 1000 },
+        batch_sleep: 2,
+        force: true,
+        refresh: false,
+        verify_count: true,
+        &block
+      )
   
         override_options = {
           find_params: find_params,
@@ -321,21 +330,11 @@ module ElasticsearchRepositories
       # Gets all possible indices for all strategies implemented on the class
       #
       # @return [Array<String>]
-      def all_klass_indices(*args)
+      def all_klass_indices(*args, **kwargs)
         indexing_strategies.each_with_object([]) do |strategy, obj|
-          strategy.reindexing_index_iterator(*args) do |import_db_query, iterator_options|
-            obj.push(iterator_options[:index]) if iterator_options[:index]
+          strategy.all_indices(*args, **kwargs).each do |index|
+            obj.push(index)
           end
-        end
-      end
-
-      # delete all indices for a class
-      #
-      # @return [void]
-      def delete_all_klass_indices(*args)
-        all_klass_indices(*args).each do |index|
-          next unless ElasticsearchRepositories.client.indices.exists?(index: index)
-          ElasticsearchRepositories.client.indices.delete(index: index)
         end
       end
       
