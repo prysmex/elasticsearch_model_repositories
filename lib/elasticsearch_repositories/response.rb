@@ -15,13 +15,13 @@ module ElasticsearchRepositories
 
         # @param [BaseStrategy|MultistrategyWrapper] strategy_or_wrapper
         # @param [ElasticsearchRepositories::SearchRequest] search
-        # @param [Hash] options
-        # @option options [Boolean] :use_cache
-        def initialize(strategy_or_wrapper, search, options={})
-          @strategy_or_wrapper     = strategy_or_wrapper
-          @search       = search
-          @use_cache    = options[:use_cache] || true
-          @cache        = {}
+        # @option [Boolean] use_cache
+        def initialize(strategy_or_wrapper, search, use_cache: true)
+          @strategy_or_wrapper  = strategy_or_wrapper
+          @search               = search
+          @use_cache            = use_cache
+          
+          @cache                = {}
         end
 
         # Returns the Elasticsearch response

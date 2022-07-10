@@ -63,7 +63,7 @@ module ElasticsearchRepositories
     # @query_or_payload [String,Hash]
     # @strategies [Array] array of strategies (ElasticsearchRepositories::BaseStrategy)
     # @options [Hash] options to pass to the search request ToDo (detail)
-    def search(query_or_payload, strategies=[], options={})
+    def search(query_or_payload, strategies, options={})
       wrapper = ElasticsearchRepositories::Multistrategy::MultistrategyWrapper.new(strategies)
       search = ElasticsearchRepositories::SearchRequest.new(wrapper, query_or_payload, options)
       ElasticsearchRepositories::Response::Response.new(wrapper, search, options)

@@ -397,7 +397,35 @@ class YourModel
 end
 ```
 
+## Files missing tests
 
+- elasticsearch_repositories
+  - adapters
+    - active_record.rb
+    - multistrategy.rb
+  - response
+    - aggregations.rb
+    - records.rb
+    - result.rb
+    - suggestions.rb
+  - strategy
+    - configuration
+      - mappings.rb
+      - settings.rb
+    - configuration.rb
+    - importing.rb
+    - indexing.rb
+    - management.rb
+    - searching.rb
+    - searching.rb
+    - serializing.rb
+  - adapter.rb
+  - base_strategy.rb
+  - model.rb
+  - multistrategy.rb
+  - registry.rb
+  - response.rb
+  - search_request.rb (incomplete)
 
 ## Development
 
