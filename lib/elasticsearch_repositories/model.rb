@@ -368,8 +368,15 @@ module ElasticsearchRepositories
   
       # Override this method on your model to handle indexing
       #
+      # @param [ElasticsearchRepositories::BaseStrategy] strategy
+      # @param [String] action
+      # @option [String] index
+      # @option [Hash] mappings
+      # @option [Hash] settings
+      # @option [Integer,String] id
+      # @option [Boolean] index_without_id
       # @return [void]
-      def index_document(action, options)
+      def index_document(strategy, action, **options)
         raise NotImplementedError('need to implement own index_document method')
       end
 
