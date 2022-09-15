@@ -116,8 +116,10 @@ class Person
   # This method is called by the gem and needs to be implemented
   # Here is where you actually index to ES, you may call a Sidekiq worker
   # that asyncronously indexes the record.
-  def index_document(action, options={})
+  def index_document(strategy, action, **options)
     SomeIndexerWorker.perform_later(
+      self,
+      strategy.name,
       action,
       options
     )
@@ -170,8 +172,10 @@ module Searchable
       end
     end
 
-    def index_document(action, options={})
+    def index_document(strategy, action, **options)
       SomeIndexerWorker.perform_later(
+        self,
+        strategy.name,
         action,
         options
       )

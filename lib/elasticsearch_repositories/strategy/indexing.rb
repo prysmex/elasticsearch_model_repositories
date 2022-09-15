@@ -26,7 +26,7 @@ module ElasticsearchRepositories
         }
 
         yield(indexer_options, action, record) if block_given?
-        record.send(:index_document, action, indexer_options)
+        record.send(:index_document, self, action, **indexer_options)
       end
 
     end
