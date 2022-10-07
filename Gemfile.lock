@@ -1,14 +1,14 @@
 PATH
   remote: .
   specs:
-    elasticsearch_model_repositories (0.7.0)
+    elasticsearch_model_repositories (0.7.1)
       activesupport (~> 6)
       elasticsearch (~> 8)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (6.1.4.6)
+    activesupport (6.1.7)
       concurrent-ruby (~> 1.0, >= 1.0.2)
       i18n (>= 1.6, < 2)
       minitest (>= 5.1)
@@ -49,7 +49,7 @@ GEM
     faraday-patron (1.0.0)
     faraday-rack (1.0.0)
     faraday-retry (1.0.3)
-    i18n (1.9.1)
+    i18n (1.12.0)
       concurrent-ruby (~> 1.0)
     minitest (5.15.0)
     minitest-reporters (1.5.0)
@@ -62,9 +62,9 @@ GEM
     rake (13.0.6)
     ruby-progressbar (1.11.0)
     ruby2_keywords (0.0.5)
-    tzinfo (2.0.4)
+    tzinfo (2.0.5)
       concurrent-ruby (~> 1.0)
-    zeitwerk (2.5.4)
+    zeitwerk (2.6.0)
 
 PLATFORMS
   ruby

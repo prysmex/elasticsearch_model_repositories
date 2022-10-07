@@ -73,11 +73,15 @@ module ElasticsearchRepositories
 
         if use_search_index_name
           # iterate with search_index_name
-          self.client.cat.indices(
-            index: self.search_index_name, h: ['index', 'docs.count']
-          ).each_line do |line|
-            index, count = line.chomp.split("\s")
-            array.push(index) if index.present?
+          begin
+            self.client.cat.indices(
+              index: self.search_index_name, h: ['index', 'docs.count']
+            ).each_line do |line|
+              index, count = line.chomp.split("\s")
+              array.push(index) if index.present?
+            end
+          rescue Elastic::Transport::Transport::Errors::NotFound => e
+            client.transport.logger.debug(e.message) if client.transport.logger
           end
         else
           # iterate with reindexing_index_iterator
