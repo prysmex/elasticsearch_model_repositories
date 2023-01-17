@@ -44,12 +44,13 @@ module ElasticsearchRepositories
             **options
           )
 
-          # since scroll API returns a hash, we wrap it in a +ElasticsearchRepositories::Response::Response+
-          # so we have the same methods as the 'search' method
+          # since scroll API returns a Elasticsearch::API::Response, we wrap it in
+          # a +ElasticsearchRepositories::Response::Response+ so we have the same
+          # methods as the 'search' method
           current_response = ElasticsearchRepositories::Response::Response.new(self, nil)
           current_response.instance_variable_get('@cache')['response'] = raw_response
 
-          break if response_hash.dig('hits', 'hits').empty?
+          break if raw_response.dig('hits', 'hits').empty?
           break if block_given? && !yield(current_response, i)
 
           responses.push(current_response)

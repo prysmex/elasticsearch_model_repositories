@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    elasticsearch_model_repositories (0.7.1)
+    elasticsearch_model_repositories (0.7.2)
       activesupport (~> 6)
       elasticsearch (~> 8)
 
@@ -18,13 +18,13 @@ GEM
     builder (3.2.4)
     byebug (9.1.0)
     concurrent-ruby (1.1.9)
-    elastic-transport (8.0.0)
-      faraday (~> 1)
+    elastic-transport (8.1.0)
+      faraday (< 3)
       multi_json
-    elasticsearch (8.2.0)
-      elastic-transport (= 8.0.0)
-      elasticsearch-api (= 8.2.0)
-    elasticsearch-api (8.2.0)
+    elasticsearch (8.5.0)
+      elastic-transport (~> 8)
+      elasticsearch-api (= 8.5.0)
+    elasticsearch-api (8.5.0)
       multi_json
     faraday (1.10.0)
       faraday-em_http (~> 1.0)
