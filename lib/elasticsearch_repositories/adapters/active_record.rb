@@ -18,46 +18,43 @@ module ElasticsearchRepositories
 
         # @return [ActiveRecord::Relation]
         def records
-          sql_records = klass_or_klasses.where(klass_or_klasses.primary_key => ids)
-          sql_records = sql_records.includes(self.options[:includes]) if self.options[:includes]
+          ar_relation = klass_or_klasses.where(klass_or_klasses.primary_key => ids)
+          ar_relation = ar_relation.includes(self.options[:includes]) if self.options[:includes]
 
           # Re-order records based on the order from Elasticsearch hits
           # by redefining `to_a` or `records`, unless the user has called `order()`
-          #
-          sql_records.instance_exec(response.results) do |hits|
-            if self
+          ar_relation.instance_exec(response.results) do |results|
+            break unless self
 
-              ar_records_method_name = if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 5
-                :records
-              else
-                :to_a
-              end
-  
-              define_singleton_method(ar_records_method_name) do
-  
-                if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 4
-                  self.load
-                else
-                  self.__send__(:exec_queries)
-                end
-  
-                # sort unless user called `order()`
-                if !self.order_values.present?
-                  @records.sort_by do |record|
-                    hits.index do |hit|
-                      hit.id == record.id.to_s
-                    end
-                  end
-                else
-                  @records
-                end
-  
-              end
-
+            ar_records_method_name = if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 5
+              :records
+            else
+              :to_a
             end
+
+            # override method in ActiveRecord_Relation instance
+            define_singleton_method(ar_records_method_name) do
+              if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 4
+                self.load
+              else
+                self.__send__(:exec_queries)
+              end
+
+              # sort unless user called `order()`
+              if !self.order_values.present?
+                @records.sort_by do |record|
+                  results.index do |result|
+                    result.id == record.id.to_s
+                  end
+                end
+              else
+                @records
+              end
+            end
+
           end
 
-          sql_records
+          ar_relation
         end
 
       end
@@ -82,7 +79,7 @@ module ElasticsearchRepositories
         #
         #     def call_indexing_methods(event_name, record)
         #       self.class.indexing_strategies.each do |strategy|
-        #         strategy.public_send(:index_record_to_es, event_name, record)
+        #         strategy.index_record_to_es(event_name, record)
         #       end
         #     end
         #
@@ -94,11 +91,11 @@ module ElasticsearchRepositories
       #
       module Importing
 
-        BULKIFY_PROC = lambda do |model, strat|
-          if strat.index_without_id
-            { index: { data: strat.as_indexed_json(model) } }
+        BULKIFY_PROC = lambda do |model, strategy|
+          if strategy.index_without_id
+            { index: { data: strategy.as_indexed_json(model) } }
           else
-            { index: { _id: model.id, data: strat.as_indexed_json(model) } }
+            { index: { _id: strategy.custom_doc_id(model) || model.id, data: strategy.as_indexed_json(model) } }
           end
         end
 

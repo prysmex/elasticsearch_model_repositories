@@ -349,7 +349,6 @@ module ElasticsearchRepositories
       def index_with_all_strategies(action = 'create', &block)
         self.class.indexing_strategies.each do |strategy|
           index_with_strategy(action, strategy, &block)
-          strategy.index_record_to_es(action, self, &block)
         end
       end
 
@@ -370,11 +369,14 @@ module ElasticsearchRepositories
       #
       # @param [ElasticsearchRepositories::BaseStrategy] strategy
       # @param [String] action
-      # @option [String] index
-      # @option [Hash] mappings
-      # @option [Hash] settings
-      # @option [Integer,String] id
-      # @option [Boolean] index_without_id
+      # @option options [Hash] mappings
+      # @option options [Hash] settings
+      # @option options [Integer,String] id
+      # @option options [Boolean] index_without_id
+      # @option options [String] options
+      #   @option options [Integer,String] id
+      #   @option options [Hash] body
+      #   @option options [String] index
       # @return [void]
       def index_document(strategy, action, **options)
         raise NotImplementedError('need to implement own index_document method')

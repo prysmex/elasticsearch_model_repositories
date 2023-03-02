@@ -127,7 +127,7 @@ class Person
 
   def call_indexing_methods(event_name, record)
     self.class.indexing_strategies.each do |strategy|
-      strategy.public_send(:index_record_to_es, event_name, record)
+      strategy.index_record_to_es(event_name, record)
     end
   end
 
@@ -168,7 +168,7 @@ module Searchable
 
     def call_indexing_methods(event_name, record)
       self.class.indexing_strategies.each do |strategy|
-        strategy.public_send(:index_record_to_es, event_name, record)
+        strategy.index_record_to_es(event_name, record)
       end
     end
 

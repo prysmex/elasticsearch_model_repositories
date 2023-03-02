@@ -26,10 +26,12 @@ module ElasticsearchRepositories
           # }
           ids_by_type = response.results.each_with_object({}) do |result, obj|
             type = __type_for_result(result)
+
             model = type_model_cache[type] ||= response.strategy_or_wrapper.host_class.detect do |model|
               __model_to_type(model) == type
             end
             next if model.nil?
+
             result[:___model_cache___] = model
 
             obj[model] ||= []

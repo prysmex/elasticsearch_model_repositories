@@ -16,14 +16,31 @@ module ElasticsearchRepositories
       #
       # @return [void]
       def index_record_to_es(action, record)
-        indexer_options = {
-          index: target_index_name(record),
-          mappings: mappings.to_hash,
-          settings: settings.to_hash,
-          id: record.id,
-          body: as_indexed_json(record),
-          index_without_id: index_without_id
-        }
+        record_id = custom_doc_id(record) || record.id
+
+        indexer_options = if action == 'delete'
+          {
+            id: record_id,
+            options: {
+              index: target_index_name(record),
+              id: record_id,
+            }
+          }
+        else
+          hash = {
+            mappings: mappings,
+            settings: settings,
+            index_without_id: index_without_id,
+            id: record_id,
+            options: {
+              index: target_index_name(record),
+              body: as_indexed_json(record),
+              id: record_id,
+            }
+          }
+          hash[:options].delete(:id) if index_without_id
+          hash
+        end
 
         yield(indexer_options, action, record) if block_given?
         record.send(:index_document, self, action, **indexer_options)

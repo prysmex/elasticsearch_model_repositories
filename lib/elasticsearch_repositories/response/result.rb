@@ -5,7 +5,8 @@ module ElasticsearchRepositories
 
     class Result < ::Hash
 
-      # Return document `_id` as `id`
+      # Return document id. Prioritize id inside source since multiple
+      # strategies may point to the same index
       #
       def id
         self.dig('_source', 'id')&.to_s || self['_id']

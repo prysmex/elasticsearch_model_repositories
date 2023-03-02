@@ -25,7 +25,7 @@ module ElasticsearchRepositories
       #       #
       #       module Records
       #         def records
-      #           klass_or_klasses.all(id: @ids)
+      #           klass_or_klasses.all(id: ids)
       #         end
       #
       #         # ...

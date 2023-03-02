@@ -11,6 +11,8 @@ module ElasticsearchRepositories
       def index_without_id
         false
       end
+
+      def custom_doc_id(record); end
       
       # Serializes a record into a ES document
       #
@@ -19,7 +21,7 @@ module ElasticsearchRepositories
       # @param [your_model_instance] record
       # @return [Hash]
       def as_indexed_json(record)
-        self.as_json(options.merge root: false)
+        self.as_json #options.merge root: false
       end
       
     end
