@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    elasticsearch_model_repositories (0.8.0)
+    elasticsearch_model_repositories (0.9.0)
       activesupport (~> 6)
       elasticsearch (~> 8)
 
@@ -17,7 +17,7 @@ GEM
     ansi (1.5.0)
     builder (3.2.4)
     byebug (9.1.0)
-    concurrent-ruby (1.1.9)
+    concurrent-ruby (1.2.2)
     elastic-transport (8.1.0)
       faraday (< 3)
       multi_json
@@ -62,9 +62,9 @@ GEM
     rake (13.0.6)
     ruby-progressbar (1.11.0)
     ruby2_keywords (0.0.5)
-    tzinfo (2.0.5)
+    tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
-    zeitwerk (2.6.0)
+    zeitwerk (2.6.7)
 
 PLATFORMS
   ruby

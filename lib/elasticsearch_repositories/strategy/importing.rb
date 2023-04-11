@@ -8,7 +8,7 @@ module ElasticsearchRepositories
     #
     module Importing
 
-      # When reindexing data for a model by calling #reload_indices! your indexing strategy might
+      # When reindexing data for a model by calling #reload_indices your indexing strategy might
       # have multiple indices (for example time-based yearly indices). If that is the case, you need
       # to override this method and ensure that the query to load data and the options passed meet your
       # requirements
@@ -18,12 +18,10 @@ module ElasticsearchRepositories
       # @yieldparam [] query to import data from DB
       # @yieldparam [Hash] options passed while reindexing data
       # @yieldreturn [void]
-      def reindexing_index_iterator(start_time = nil, end_time = nil, &block)
+      def reload_indices_iterator(start_time = nil, end_time = nil)
         yield(
           where(''),
           {
-            strategy: self,
-            index_without_id: index_without_id,
             settings: settings.to_hash,
             mappings: mappings.to_hash,
             index: target_index_name(nil),
@@ -38,9 +36,7 @@ module ElasticsearchRepositories
       #
       # @return []
       def reindexing_includes_proc
-        Proc.new do |query|
-          query.where('')
-        end
+        proc {|query| query.where('') }
       end
       
     end

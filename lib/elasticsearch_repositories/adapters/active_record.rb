@@ -103,7 +103,7 @@ module ElasticsearchRepositories
         #
         # @see http://api.rubyonrails.org/classes/ActiveRecord/Batches.html ActiveRecord::Batches.find_in_batches
         #
-        def self.find_in_batches(model, query: nil, scope: nil, find_params: {}, &block)
+        def self.find_in_batches(model, query: nil, scope: nil, **find_params, &block)
           model = model.__send__(scope) if scope
           model = model.instance_exec(&query) if query
 

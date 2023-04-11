@@ -13,7 +13,7 @@ module ElasticsearchRepositories
         # @param [Hash] options index mappings options (dynamic, etc...)
         # @param [ElasticsearchRepositories::BaseStrategy] strategy
         def initialize(options={}, strategy=nil)
-          self.instance_variable_set('@dynamic_properties_methods', [])
+          instance_variable_set('@dynamic_properties_methods', [])
           @options = options
           @strategy = strategy
           @mapping = {}

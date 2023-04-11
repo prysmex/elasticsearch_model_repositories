@@ -69,7 +69,7 @@ module ElasticsearchRepositories
         @cached_settings.settings.update(settings) unless settings.empty?
 
         if block_given?
-          self.instance_eval(&block)
+          instance_eval(&block)
           return self
         else
           @cached_settings

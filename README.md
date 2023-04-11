@@ -60,7 +60,7 @@ Here is a list of methods that you may want to consider overriding on your custo
 - target_index_name
 - search_index_name
 - current_index_name
-- reindexing_index_iterator
+- reload_indices_iterator
 - index_without_id
 - as_indexed_json
 - index_record_to_es
@@ -230,7 +230,7 @@ simple_indexing_strategy.as_indexed_json(Person.first) # returns the serialized 
 simple_indexing_strategy.search({query: {match_all: {}}})
 
 #reload all registered indices
-Person.reload_indices!({})
+Person.reload_indices(force: true)
 ```
 
 Now lets create an indexing strategy that uses yearly indices
@@ -267,7 +267,7 @@ class Yearly < ElasticsearchRepositories::BaseStrategy
   ##########
 
   # Since we have special business logic of how to index the data (divided into yearly indices) we need to override how the data gets reindexed.
-  def reindexing_index_iterator(start_time = nil, end_time = nil)
+  def reload_indices_iterator(start_time = nil, end_time = nil)
 
     start_time = (start_time || host_class.minimum('created_at'))&.beginning_of_year
     end_time = (end_time || host_class.maximum('created_at'))&.end_of_year
@@ -284,9 +284,7 @@ class Yearly < ElasticsearchRepositories::BaseStrategy
         yield(
           host_class.where('created_at >= ? and created_at < ?', _start, _end),
           {
-            strategy: self,
             index: _build_dated_index_name(_start),
-            index_without_id: index_without_id,
             settings: settings.to_hash,
             mappings: mappings.to_hash,
             verify_count_query: { query: { bool:{ filter: [ range: { created_at: { gte: _start, lt: _end  } } ] } } }
