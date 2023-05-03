@@ -28,15 +28,29 @@ module ElasticsearchRepositories
       #  
       # @param [DateTime] start_time used for reload_indices_iterator
       # @param [DateTime] end_time used for reload_indices_iterator
+      # @param [Proc] each_batch_proc
       # @param [Boolean] refresh
       # @param [Boolean] verify_count
+      # @param [String|NilClass] refresh_interval
+      # @param [Hash] find_in_batches_params
+      # @param [Hash] create_index_params
+      # @param [Boolean] force
+      # @param [Hash] bulk_request_params
+      # @param [Integer] batch_sleep
+      # ---private
+      # @param [Boolean] verify_count_query
+      # @param [String] index
+      # @param [] settings
+      # @param [] mappings
+      # @param [Proc] bulkify
       #
       # @return [Hash] total errors by strategy
       def reload_indices(
         start_time: nil,
         end_time: nil,
-        **override_options,
-        &block
+        each_batch_proc: nil,
+        strategy_names: nil,
+        **override_options
       )
 
         # defaults
@@ -47,6 +61,8 @@ module ElasticsearchRepositories
 
         # call reload_indices_iterator for all strategies
         indexing_strategies.each_with_object({}) do |strategy, return_hash|
+          next if strategy_names && !strategy_names.includes?(strategy.name)
+
           key = strategy.class.name
           current_hash = return_hash[key] = []
 
@@ -54,20 +70,39 @@ module ElasticsearchRepositories
 
             # merge passed options
             options = iterator_options.deep_merge(override_options)
-
-            options[:find_in_batches_params] ||= {}
-            options[:find_in_batches_params][:query] = -> { strategy.reindexing_includes_proc.call(import_db_query) }
     
             # ensure important options are present before recreating index
             %i[index settings mappings].each do |name|
               next unless options[name].nil?
               raise ArgumentError.new("missing option #{name} while importing")
             end
-            
-            import_return = import(strategy: strategy, **options, &block)
+
+            # allow to process query while reindexing
+            import_db_query = options[:process_query].call(import_db_query) if options[:process_query]
+
+            # find_in_batches_params
+            options[:find_in_batches_params] ||= {}
+            options[:find_in_batches_params][:query] = -> { strategy.reindexing_includes_proc.call(import_db_query) }
+
+            # create_index_params
+            options[:create_index_params] ||= {}
+            options[:create_index_params][:force] = options[:force] unless options[:force].nil?
+
+            # create/recreate index
+            strategy.create_index(
+              index: options[:index],
+              mappings: options[:mappings],
+              settings: options[:settings],
+              **options[:create_index_params]
+            )
+
+            import_return = if block_given?
+              yield(self, strategy, options)
+            else
+              import(strategy: strategy, **options, &each_batch_proc)
+            end
 
             current_hash.push(import_return)
-
             strategy.refresh_index index: options[:index] if options[:refresh]
 
             if options[:verify_count] && options[:verify_count_query]
@@ -145,50 +180,30 @@ module ElasticsearchRepositories
         )
       end
 
-      # @param index [String]
-      # @param mappings [Hash]
-      # @param settings [Hash]
-      # @param strategy   [ElasticsearchRepositories::BaseStrategy]
-      # @param find_in_batches_params [Hash]
-      # @param create_index_params [Hash]
-      # @param bulk_request_params [Hash]
-      # @param refresh_interval   [String|NilClass]
-      # @param batch_sleep   [Integer]
-      # @param bulkify   [Proc]
-      # @param force   [Boolean]
+      # @param [String] index
+      # @param [ElasticsearchRepositories::BaseStrategy] strategy
+      # @param [Hash] find_in_batches_params
+      # @param [Hash] bulk_request_params
+      # @param [String|NilClass] refresh_interval
+      # @param [Integer] batch_sleep
+      # @param [Proc] bulkify
       #
       # @return [Hash]
       def import(
         index:,
-        mappings:,
-        settings:,
         strategy:,
         find_in_batches_params: {},
-        create_index_params: {},
         bulk_request_params: {},
         refresh_interval: '-1',
         batch_sleep: 2,
         bulkify: nil,
-        force: nil,
-        **_kwargs # allow passing unknown options
+        **_kwargs # allow passing unknown kwargs
       )
+  
+        return_hash = { errors: 0, total: 0 }
+
         adapter_importing_module = Adapter.new(self).importing_mixin
         bulkify ||= adapter_importing_module::BULKIFY_PROC
-
-        # compatibility
-        unless force.nil?
-          create_index_params[:force] = force
-        end
-  
-        # create/recreate index
-        strategy.create_index(
-          index: index,
-          mappings: mappings,
-          settings: settings,
-          **create_index_params
-        )
-
-        return_hash = { errors: 0, total: 0 }
 
         # call adapter find_in_batches
         measurements = with_refresh_interval(strategy, index, refresh_interval) do
