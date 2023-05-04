@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    elasticsearch_model_repositories (0.10.0)
+    elasticsearch_model_repositories (0.10.1)
       activesupport (~> 6)
       elasticsearch (~> 8)
 

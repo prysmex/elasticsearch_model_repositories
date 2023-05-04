@@ -158,7 +158,7 @@ module ElasticsearchRepositories
       # @param [String] interval
       # @return [void]
       def with_refresh_interval(strategy, index, interval)
-        return if interval == false
+        return yield if interval == false
 
         current_interval = strategy
           .client
