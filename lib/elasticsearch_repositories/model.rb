@@ -29,6 +29,7 @@ module ElasticsearchRepositories
       # @param [DateTime] start_time used for reload_indices_iterator
       # @param [DateTime] end_time used for reload_indices_iterator
       # @param [Proc] each_batch_proc
+      # @param [Proc] each_index_proc
       # @param [Boolean] refresh
       # @param [Boolean] verify_count
       # @param [String|NilClass] refresh_interval
@@ -76,6 +77,8 @@ module ElasticsearchRepositories
               next unless options[name].nil?
               raise ArgumentError.new("missing option #{name} while importing")
             end
+
+            options[:each_index_proc]&.call(options)
 
             # allow to process query while reindexing
             import_db_query = options[:process_query].call(import_db_query) if options[:process_query]
