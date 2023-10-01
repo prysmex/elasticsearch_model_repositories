@@ -9,7 +9,7 @@ module ElasticsearchRepositories
 
       #
       # Call this method to index a record into elasticsearch, if you want to index a record
-      # to all of its model's strategies, use #index_to_all_indices
+      # to all of its model's strategies, use #index_with_all_strategies
       #
       # @param [String] action ('update', 'create', 'delete')
       # @param [your_model_instance] record

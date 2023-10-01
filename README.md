@@ -221,7 +221,7 @@ simple_indexing_strategy = Person.default_indexing_strategy
 Person.create({name: 'Yoda'}) # this will create the record on ES with all registered strategies
 Person.update({name: 'John'}) # this will update the record on ES with all registered strategies
 Person.destroy # this will delete the record from ES with all registered strategies
-Person.first.index_to_all_indices # will index (create/update) the document with all registered strategies
+Person.first.index_with_all_strategies # will index (create/update) the document with all registered strategies
 simple_indexing_strategy.index_record_to_es('update', Person.first) # to only this specific strategy
 
 # to serialize the record with a specific strategy
