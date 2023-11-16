@@ -8,7 +8,7 @@ module ElasticsearchRepositories
     #
     module Searching
 
-      SCROLL_DURATION = '1m'.freeze
+      SCROLL_DURATION = '30s'.freeze
   
       #
       # Builds a search request and a response ready to make a request
