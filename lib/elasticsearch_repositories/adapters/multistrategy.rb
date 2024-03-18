@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Adapters
 
@@ -8,11 +10,12 @@ module ElasticsearchRepositories
     module Multistrategy
 
       # register adapter
-      Adapter.register self, lambda { |klass_or_klasses| klass_or_klasses.is_a? Array }
+      Adapter.register self, ->(klass_or_klasses) { klass_or_klasses.is_a? Array }
 
       module Records
 
-        # Returns a collection of model instances, possibly of different classes and adapters (ActiveRecord, Mongoid, ...)
+        # Returns a collection of model instances, possibly of different classes and
+        # adapters (ActiveRecord, Mongoid, ...)
         #
         # @note The order of results in the Elasticsearch response must be preserved
         #
@@ -27,8 +30,8 @@ module ElasticsearchRepositories
           ids_by_type = response.results.each_with_object({}) do |result, obj|
             type = __type_for_result(result)
 
-            model = type_model_cache[type] ||= response.strategy_or_wrapper.host_class.detect do |model|
-              __model_to_type(model) == type
+            model = type_model_cache[type] ||= response.strategy_or_wrapper.host_class.detect do |curr_model|
+              __model_to_type(curr_model) == type
             end
             next if model.nil?
 
@@ -82,10 +85,10 @@ module ElasticsearchRepositories
         #
         def __records_for_model(model, ids)
           adapter = __adapter_for_model(model)
-          case
-          when ElasticsearchRepositories::Adapters::ActiveRecord.equal?(adapter)
 
-            multi_includes = self.options[:multimodel_includes]
+          if ElasticsearchRepositories::Adapters::ActiveRecord.equal?(adapter) # rubocop:disable Style/GuardClause
+
+            multi_includes = options[:multimodel_includes]
             model_includes = []
             if multi_includes.is_a? Hash
               model_includes.concat(multi_includes[model.name.underscore.to_sym])
@@ -106,12 +109,12 @@ module ElasticsearchRepositories
         # @api private
         #
         def __adapter_for_model(model)
-          Adapter.adapters.select { |name, checker| checker.call(model) }.keys.first
+          Adapter.adapters.select { |_name, checker| checker.call(model) }.keys.first
         end
 
       end
 
     end
-    
+
   end
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Multistrategy
 
@@ -12,22 +14,21 @@ module ElasticsearchRepositories
       end
 
       def search_index_name
-        strategies.map { |s| s.search_index_name }
+        strategies.map(&:search_index_name)
       end
 
       # Get the common client for all strategies
       # @return Elastic::Transport::Client
       def client
-        _strategies = strategies.map { |s| s.client }.uniq
-        if _strategies.size == 1
-          _strategies.first
-        else
-          raise StandardError.new('Multistrategy defined with strategies with different elasticsearch clients')
-        end
+        clients = strategies.map(&:client).uniq
+
+        raise StandardError.new('Strategies must implement same client') unless clients.size == 1
+
+        clients.first
       end
 
       def host_class
-        strategies.map { |s| s.host_class }
+        strategies.map(&:host_class)
       end
 
     end

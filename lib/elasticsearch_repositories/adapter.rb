@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   # Contains a registry for ElasticsearchRepositories::Adapters::* along with a
   # lambda that is used to match an adapter
@@ -40,15 +42,20 @@ module ElasticsearchRepositories
       #         defined?(::DataMapper::Resource) and klass_or_klasses.ancestors.include?(::DataMapper::Resource)
       #       }
       #     )
-      def register(name, condition)
-        self.adapters[name] = condition
+      #
+      # @param adapter_module [Module]
+      # @param condition [Proc]
+      #
+      # @return [void]
+      def register(adapter_module, condition)
+        adapters[adapter_module] = condition
       end
 
       # @return Hash{adapter_klass => Proc} the collection of registered adapters
       def adapters
         @adapters ||= {}
       end
-      
+
     end
 
     attr_reader :klass_or_klasses
@@ -72,15 +79,17 @@ module ElasticsearchRepositories
       match_adapter.const_get(:Importing)
     end
 
-    # Returns the adapter module that first evaluates its registered condition as true 
+    # Returns the adapter module that first evaluates its registered condition as true
     #
     # @return [Module] ElasticsearchRepositories::Adapters::*
     def match_adapter
-      @matched_adapter ||= begin
-        self.class.adapters.find( lambda {[]} ) { |name, condition| condition.call(klass_or_klasses) }.first
-      end
+      @match_adapter ||= self
+        .class
+        .adapters
+        .find(-> { [] }) { |_name, condition| condition.call(klass_or_klasses) }
+        .first
     end
 
   end
-  
+
 end

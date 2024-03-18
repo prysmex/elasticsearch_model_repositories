@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Strategy
-    
+
     #
     # This module contains all methods used by BaseStrategy regarding:
     #
@@ -18,7 +20,7 @@ module ElasticsearchRepositories
       # @yieldparam [] query to import data from DB
       # @yieldparam [Hash] options passed while reindexing data
       # @yieldreturn [void]
-      def reload_indices_iterator(start_time = nil, end_time = nil)
+      def reload_indices_iterator(_start_time = nil, _end_time = nil)
         yield(
           where(''),
           {
@@ -36,9 +38,9 @@ module ElasticsearchRepositories
       #
       # @return []
       def reindexing_includes_proc
-        proc {|query| query.where('') }
+        proc { |query| query.where('') }
       end
-      
+
     end
   end
 end

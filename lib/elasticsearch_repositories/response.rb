@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Response
 
@@ -10,15 +12,15 @@ module ElasticsearchRepositories
 
         include Enumerable
 
-        #ToDo 'delegate' is rails specific
+        # TODO: 'delegate' is rails specific
         delegate :each, :empty?, :size, :slice, :[], :to_ary, to: :results
 
         # @param [BaseStrategy|MultistrategyWrapper] strategy_or_wrapper
         # @param [ElasticsearchRepositories::SearchRequest] search
         # @param [Hash] options
         # @option options [Boolean] :use_cache
-        def initialize(strategy_or_wrapper, search, options={})
-          @strategy_or_wrapper     = strategy_or_wrapper
+        def initialize(strategy_or_wrapper, search, options = {})
+          @strategy_or_wrapper = strategy_or_wrapper
           @search       = search
           @use_cache    = options[:use_cache] || true
           @cache        = {}
@@ -39,7 +41,7 @@ module ElasticsearchRepositories
         # @return [Results]
         def results
           with_cache('results') do
-            response.dig('hits', 'hits').map { |hit| Result.new().merge! hit }
+            response.dig('hits', 'hits').map { |hit| Result.new.merge! hit }
           end
         end
 
@@ -60,12 +62,15 @@ module ElasticsearchRepositories
 
         # Returns the total number of pages
         def total_pages(size = @search_size)
-          unless size
-            msg = "missing 'size' argument, pass it to .total_pages(size) or ensure query definition contains :size"
-            raise ArgumentError.new(msg)
+          if size.nil?
+            raise ArgumentError.new(
+              "missing 'size' argument, pass it to .total_pages(size) or ensure query definition contains :size"
+            )
           end
 
-          size == 0 ? 0 : (self.total / size.to_f).ceil
+          return 0 if size.zero?
+
+          (total / size.to_f).ceil
         end
 
         # Returns the max_score
@@ -91,14 +96,14 @@ module ElasticsearchRepositories
         # Returns aggregations
         def aggregations
           with_cache('aggregations') do
-            Aggregations.new().merge! (response['aggregations'] || {})
+            Aggregations.new.merge!(response['aggregations'] || {})
           end
         end
 
         # Returns suggestions
         def suggestions
           with_cache('suggestions') do
-            Suggestions.new().merge! (response['suggest'] || {})
+            Suggestions.new.merge!(response['suggest'] || {})
           end
         end
 
@@ -113,7 +118,7 @@ module ElasticsearchRepositories
         def clear_cache!
           @cache.clear
         end
-        
+
       end
 
   end

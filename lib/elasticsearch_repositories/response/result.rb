@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Response
 
@@ -9,7 +11,7 @@ module ElasticsearchRepositories
       # strategies may point to the same index
       #
       def id
-        self.dig('_source', 'id')&.to_s || self['_id']
+        dig('_source', 'id')&.to_s || self['_id']
       end
 
       # # Return document `_type` as `_type`

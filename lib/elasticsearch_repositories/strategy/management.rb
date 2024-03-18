@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Strategy
-    
+
     #
     # This module contains all methods used by BaseStrategy regarding:
     # - creating the index
@@ -26,14 +28,15 @@ module ElasticsearchRepositories
         mappings: self.mappings.to_hash,
         **options
       )
-        delete_index(index: index) if force
+        delete_index(index:) if force
 
-        return if index_exists?(index: index)
+        return if index_exists?(index:)
+
         client.indices.create(
-          index: index,
+          index:,
           body: {
-            settings: settings,
-            mappings: mappings
+            settings:,
+            mappings:
           },
           **options
         )
@@ -45,7 +48,7 @@ module ElasticsearchRepositories
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#delete options
       # @return [Hash, nil] nil if not found
       def delete_index(index: current_index_name, **options)
-        client.indices.delete(index: index, **options)
+        client.indices.delete(index:, **options)
       rescue Elastic::Transport::Transport::Errors::NotFound => e
         client.transport.logger&.debug("[!!!] Index #{index} does not exist (#{e.class})")
       end
@@ -56,7 +59,7 @@ module ElasticsearchRepositories
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#exists options
       # @param [Boolean] true if exists
       def index_exists?(index: current_index_name, **options)
-        client.indices.exists(index: index, **options)
+        client.indices.exists(index:, **options)
       end
 
       # Performs the "refresh" operation for the index (useful e.g. in tests)
@@ -64,8 +67,7 @@ module ElasticsearchRepositories
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#refresh options
       # @return [Hash, nil] nil if not found
       def refresh_index(index: current_index_name, **options)
-        client.indices.refresh(index: index, **options)
-
+        client.indices.refresh(index:, **options)
       rescue Elastic::Transport::Transport::Errors::NotFound => e
         client.transport.logger&.debug("[!!!] Index #{index} does not exist (#{e.class})")
       end
@@ -76,7 +78,7 @@ module ElasticsearchRepositories
       # elastisearch's cat api and the search_index_name. Otherwise,
       # the reload_indices_iterator will be used
       #
-      # @param [Boolean] get_from_api 
+      # @param [Boolean] get_from_api
       # @return [Array<String>]
       def all_indices(*args, get_from_api: false)
         array = []
@@ -84,16 +86,16 @@ module ElasticsearchRepositories
         if get_from_api
           begin
             client.cat.indices(
-              index: search_index_name, h: ['index', 'docs.count']
+              index: search_index_name, h: %w[index] # 'docs.count'
             ).each_line do |line|
-              index, count = line.chomp.split("\s")
+              index = line.chomp.split("\s")
               array.push(index) if index.present?
             end
           rescue Elastic::Transport::Transport::Errors::NotFound => e
             client.transport.logger&.debug(e.message)
           end
         else
-          reload_indices_iterator(*args) do |import_db_query, iterator_options|
+          reload_indices_iterator(*args) do |_import_db_query, iterator_options|
             index = iterator_options[:index]
             array.push(index) if index
           end
@@ -101,7 +103,7 @@ module ElasticsearchRepositories
 
         array
       end
-      
+
     end
 
   end

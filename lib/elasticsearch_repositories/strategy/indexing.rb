@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Strategy
-    
+
     #
     # This module contains all methods used by BaseStrategy regarding:
     # - indexing a document (update, create, delete)
@@ -23,19 +25,19 @@ module ElasticsearchRepositories
             id: record_id,
             options: {
               index: target_index_name(record),
-              id: record_id,
+              id: record_id
             }
           }
         else
           hash = {
-            mappings: mappings,
-            settings: settings,
-            index_without_id: index_without_id,
+            mappings:,
+            settings:,
+            index_without_id:,
             id: record_id,
             options: {
               index: target_index_name(record),
               body: as_indexed_json(record),
-              id: record_id,
+              id: record_id
             }
           }
           hash[:options].delete(:id) if index_without_id

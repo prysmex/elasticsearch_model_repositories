@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Response
 
@@ -17,15 +19,14 @@ module ElasticsearchRepositories
 
       # @param [Class,Array<Class>] klass_or_klasses
       # @param [ElasticsearchRepositories::Response::Response] response
-      def initialize(klass_or_klasses, response, options={})
-        
+      def initialize(klass_or_klasses, response, options = {})
         @klass_or_klasses = klass_or_klasses
         @response = response
 
         # Include module provided by the adapter in the singleton class
         #
         adapter = Adapter.new(klass_or_klasses)
-        self.singleton_class.include adapter.records_mixin
+        singleton_class.include adapter.records_mixin
 
         self.options = options
       end
@@ -44,25 +45,31 @@ module ElasticsearchRepositories
 
       # Yields [record, hit] pairs to the block
       #
-      def each_with_hit(&block)
-        records.to_a.zip(results).each(&block)
+      def each_with_hit(&)
+        records.to_a.zip(results).each(&)
       end
 
       # Yields [record, hit] pairs and returns the result
       #
-      def map_with_hit(&block)
-        records.to_a.zip(results).map(&block)
+      def map_with_hit(&)
+        records.to_a.zip(results).map(&)
       end
 
-      # Delegate methods to `@records`
+      # Delegate to `@records` if it responds to method (public only)
       #
-      def method_missing(method_name, *arguments)
-        records.respond_to?(method_name) ? records.__send__(method_name, *arguments) : super
+      # @override
+      def method_missing(method_name, *args, **kwargs)
+        if records.respond_to?(method_name)
+          records.public_send(method_name, *args, **kwargs)
+        else
+          super
+        end
       end
 
-      # Respond to methods from `@records`
+      # Respond to methods from `@records` (public only)
       #
-      def respond_to?(method_name, include_private = false)
+      # @override
+      def respond_to_missing?(method_name, _include_private = false)
         records.respond_to?(method_name) || super
       end
 

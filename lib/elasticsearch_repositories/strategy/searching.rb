@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Strategy
 
@@ -8,8 +10,8 @@ module ElasticsearchRepositories
     #
     module Searching
 
-      SCROLL_DURATION = '30s'.freeze
-  
+      SCROLL_DURATION = '30s'
+
       #
       # Builds a search request and a response ready to make a request
       #
@@ -29,13 +31,13 @@ module ElasticsearchRepositories
       # @param [Hash] options to be passed to scroll API
       # @return [Array<ElasticsearchRepositories::Response::Response>]
       def scroll(response, limit: nil, clear: true, **options, &block)
-        stop_proc = -> (response, index) {
-          if response.response.dig('hits', 'hits').empty?
+        stop_proc = ->(resp, index) {
+          if resp.response.dig('hits', 'hits').empty?
             true
           elsif limit.present?
             index > (limit - 1)
           else
-            block&.call(response, index)
+            block&.call(resp, index)
           end
         }
 
@@ -48,12 +50,12 @@ module ElasticsearchRepositories
         current_response = response
         scroll_id = current_response.response['_scroll_id']
         raise StandardError.new('response passed to scroll does not contain _scroll_id') unless scroll_id
-        
+
         i = 1
         # start scrolling loop
         loop do
-          raw_response = self.client.scroll(
-            body:  { scroll_id: scroll_id }, 
+          raw_response = client.scroll(
+            body: { scroll_id: },
             **options
           )
 
@@ -61,7 +63,7 @@ module ElasticsearchRepositories
           # a +ElasticsearchRepositories::Response::Response+ so we have the same
           # methods as the 'search' method
           current_response = ElasticsearchRepositories::Response::Response.new(self, nil)
-          current_response.instance_variable_get('@cache')['response'] = raw_response
+          current_response.instance_variable_get(:@cache)['response'] = raw_response
 
           break if stop_proc.call(current_response, i)
 
@@ -71,8 +73,8 @@ module ElasticsearchRepositories
         end
 
         if clear
-          self.client.clear_scroll(
-            body: { scroll_id: scroll_id }
+          client.clear_scroll(
+            body: { scroll_id: }
           ) rescue nil
         end
 
@@ -85,14 +87,14 @@ module ElasticsearchRepositories
       # @param [Hash] search_options to be passed to +SearchRequest+ and +Response::Response+
       # @param [Hash] scroll_options
       # @return [Array<ElasticsearchRepositories::Response::Response>]
-      def search_and_scroll(query_or_payload, search_options = {}, scroll_options = {}, &block)
+      def search_and_scroll(query_or_payload, search_options = {}, scroll_options = {}, &)
         scroll_options[:scroll] = search_options[:scroll] ||= SCROLL_DURATION
 
         response = search(query_or_payload, search_options)
-        responses = scroll(response, **scroll_options, &block)
+        responses = scroll(response, **scroll_options, &)
         [response] + responses
       end
-  
+
     end
 
   end

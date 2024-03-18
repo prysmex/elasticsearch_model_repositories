@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Adapters
 
@@ -6,10 +8,10 @@ module ElasticsearchRepositories
     module ActiveRecord
 
       # register adapter
-      Adapter.register self, lambda {|klass_or_klasses|
-        !!defined?(::ActiveRecord::Base) &&
-            klass_or_klasses.respond_to?(:ancestors) &&
-            klass_or_klasses.ancestors.include?(::ActiveRecord::Base)
+      Adapter.register self, ->(klass_or_klasses) {
+        defined?(::ActiveRecord::Base) &&
+          klass_or_klasses.respond_to?(:ancestors) &&
+          klass_or_klasses.ancestors.include?(::ActiveRecord::Base)
       }
 
       # Module for implementing methods and logic related to fetching records from the database
@@ -19,39 +21,28 @@ module ElasticsearchRepositories
         # @return [ActiveRecord::Relation]
         def records
           ar_relation = klass_or_klasses.where(klass_or_klasses.primary_key => ids)
-          ar_relation = ar_relation.includes(self.options[:includes]) if self.options[:includes]
+          ar_relation = ar_relation.includes(options[:includes]) if options[:includes]
 
           # Re-order records based on the order from Elasticsearch hits
           # by redefining `to_a` or `records`, unless the user has called `order()`
           ar_relation.instance_exec(response.results) do |results|
-            break unless self
-
-            ar_records_method_name = if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 5
-              :records
-            else
-              :to_a
-            end
+            break unless self # TODO: why?
 
             # override method in ActiveRecord_Relation instance
-            define_singleton_method(ar_records_method_name) do
-              if defined?(::ActiveRecord) && ::ActiveRecord::VERSION::MAJOR >= 4
-                self.load
-              else
-                self.__send__(:exec_queries)
-              end
+            define_singleton_method(:records) do
+              self.load
 
               # sort unless user called `order()`
-              if !self.order_values.present?
+              if order_values.present?
+                @records
+              else
                 @records.sort_by do |record|
                   results.index do |result|
                     result.id == record.id.to_s
                   end
                 end
-              else
-                @records
               end
             end
-
           end
 
           ar_relation
@@ -91,7 +82,7 @@ module ElasticsearchRepositories
       #
       module Importing
 
-        BULKIFY_PROC = lambda do |model, strategy|
+        BULKIFY_PROC = ->(model, strategy) do
           if strategy.index_without_id
             { index: { data: strategy.as_indexed_json(model) } }
           else
@@ -103,8 +94,8 @@ module ElasticsearchRepositories
         #
         # @see http://api.rubyonrails.org/classes/ActiveRecord/Batches.html ActiveRecord::Batches.find_in_batches
         #
-        def self.find_in_batches(model, query: nil, scope: nil, **find_params, &block)
-          model = model.__send__(scope) if scope
+        def self.find_in_batches(model, query: nil, scope: nil, **find_params)
+          model = model.public_send(scope) if scope
           model = model.instance_exec(&query) if query
 
           model.find_in_batches(**find_params) do |batch|

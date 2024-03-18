@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
 
   #
@@ -16,7 +18,7 @@ module ElasticsearchRepositories
       # @return [void]
       def create_indices(start_time: nil, end_time: nil, **kwargs)
         indexing_strategies.each do |strategy|
-          strategy.reload_indices_iterator(start_time, end_time) do |import_db_query, iterator_options|
+          strategy.reload_indices_iterator(start_time, end_time) do |_import_db_query, iterator_options|
             strategy.create_index(
               iterator_options.slice(:index, :mappings, :settings).merge!(kwargs)
             )
@@ -25,7 +27,7 @@ module ElasticsearchRepositories
       end
 
       # Reloads data into a model's indices
-      #  
+      #
       # @param [DateTime] start_time used for reload_indices_iterator
       # @param [DateTime] end_time used for reload_indices_iterator
       # @param [Proc] each_batch_proc
@@ -60,6 +62,8 @@ module ElasticsearchRepositories
           verify_count: false
         )
 
+        required_options = %i[index settings mappings]
+
         # call reload_indices_iterator for all strategies
         indexing_strategies.each_with_object({}) do |strategy, return_hash|
           next if strategy_names && !strategy_names.includes?(strategy.name)
@@ -68,13 +72,13 @@ module ElasticsearchRepositories
           current_hash = return_hash[key] = []
 
           strategy.reload_indices_iterator(start_time, end_time) do |import_db_query, iterator_options|
-
             # merge passed options
             options = iterator_options.deep_merge(override_options)
-    
+
             # ensure important options are present before recreating index
-            %i[index settings mappings].each do |name|
+            required_options.each do |name|
               next unless options[name].nil?
+
               raise ArgumentError.new("missing option #{name} while importing")
             end
 
@@ -102,7 +106,7 @@ module ElasticsearchRepositories
             import_return = if block_given?
               yield(self, strategy, options)
             else
-              import(strategy: strategy, **options, &each_batch_proc)
+              import(strategy:, **options, &each_batch_proc)
             end
 
             current_hash.push(import_return)
@@ -114,74 +118,11 @@ module ElasticsearchRepositories
               end
               verify_index_doc_count(strategy, import_db_query, options[:index], options[:verify_count_query])
             end
-
           end
         end
       end
 
       private
-
-      # @example
-      #
-      #   with_timer do |ruler|
-      #     ruler.call(:foo) do
-      #       sleep(1)
-      #     end
-      
-      #     ruler.call(:foo) do
-      #       sleep(2)
-      #     end
-      #   end
-      #
-      #   => {:foo=>[1.001047, 2.001069]}
-      #
-      # @param [Boolean] average
-      # @return [Hash{* => Array<Integer>}]
-      def with_timer(average: false)
-        obj = {}
-        wrapper = lambda do |key, normalizer = nil, &block|
-          key_array = obj[key] ||= []
-      
-          now = Time.now
-          value = block.call
-          took = Time.now - now
-          took = normalizer.call(took) if normalizer
-          key_array.push(took)
-          [value, took]
-        end
-        yield wrapper, obj
-        obj = obj.transform_values! {|v| v.sum(0.0) / v.size } if average
-        obj
-      end
-
-      # Temporarily sets a value for 'refresh_interval' setting
-      #
-      # @param [BaseStrategy] strategy
-      # @param [String] index
-      # @param [String] interval
-      # @return [void]
-      def with_refresh_interval(strategy, index, interval)
-        return yield if interval == false
-
-        current_interval = strategy
-          .client
-          .indices
-          .get_settings(index: index)
-          .dig(index, 'settings', 'index', 'refresh_interval') || '1s'
-
-        strategy.client.indices.put_settings(
-          body: { index: { refresh_interval: interval } },
-          index: index
-        )
-
-        yield
-      ensure
-        # restore refresh_interval
-        strategy.client.indices.put_settings(
-          body: { index: { refresh_interval: current_interval } },
-          index: index
-        )
-      end
 
       # @param [String] index
       # @param [ElasticsearchRepositories::BaseStrategy] strategy
@@ -202,28 +143,28 @@ module ElasticsearchRepositories
         bulkify: nil,
         **_kwargs # allow passing unknown kwargs
       )
-  
+
         return_hash = { errors: 0, total: 0 }
 
         adapter_importing_module = Adapter.new(self).importing_mixin
         bulkify ||= adapter_importing_module::BULKIFY_PROC
 
         # call adapter find_in_batches
-        measurements = with_refresh_interval(strategy, index, refresh_interval) do
-          with_timer(average: true) do |timer, timer_data|
+        measurements = ElasticsearchRepositories.with_refresh_interval(strategy, index, refresh_interval) do
+          ElasticsearchRepositories.with_timer(average: true) do |timer, timer_data|
             adapter_importing_module.find_in_batches(self, **find_in_batches_params) do |batch|
               batch_size = batch.size
               normalizer = ->(took) { batch_size.fdiv(took) }
 
-              # time __batch_to_bulk
-              bulk, _ = timer.call(:bulkify_per_s, normalizer) do
-                __batch_to_bulk(batch, strategy, bulkify)
+              # time bulkify
+              bulk, _took = timer.call(:bulkify_per_s, normalizer) do
+                batch.map { |r| bulkify.call(r, strategy) }
               end
 
               # time bulk request
-              response, _ = timer.call(:bulk_req_per_s, normalizer) do
+              response, _took = timer.call(:bulk_req_per_s, normalizer) do
                 strategy.client.bulk({
-                  index: index,
+                  index:,
                   body: bulk
                 }.merge!(bulk_request_params))
               end
@@ -239,27 +180,18 @@ module ElasticsearchRepositories
 
               # increment errors
               return_hash[:errors] += error_items.size
-    
+
               # increment total
               return_hash[:total] += batch_size
-    
+
               yield(strategy, response, error_items, timer_data) if block_given?
-              
+
               sleep(batch_sleep) if batch_sleep
             end
           end
         end
-        
+
         return_hash.merge!(measurements)
-      end
-  
-      # Maps an array of the model's instances by calling the bulkify Proc
-      #
-      # @param [Array] batch
-      # @param [ElasticsearchRepositories::BaseStrategy] strategy
-      # @param [Proc] bulkify
-      def __batch_to_bulk(batch, strategy, bulkify)
-        batch.map { |model| bulkify.call(model, strategy) }
       end
 
       # verifies that an index contains the same amount of
@@ -274,23 +206,23 @@ module ElasticsearchRepositories
         db_count = import_db_query.count
 
         es_count = strategy
-            .client
-            .count({
-              body: verify_count_query,
-              index: index
-            })['count']
+          .client
+          .count({
+            body: verify_count_query,
+            index:
+          })['count']
 
-        if db_count != es_count
-          puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{verify_count_query}"
-        else
+        if db_count == es_count
           puts "(DB=#{db_count}, ES=#{es_count}) for query: #{verify_count_query}"
+        else
+          puts "MISMATCH! -> (DB=#{db_count}, ES=#{es_count}) for query: #{verify_count_query}"
         end
 
         db_count == es_count
       end
 
     end
-    
+
     module ClassMethods
 
       include Importing
@@ -303,40 +235,36 @@ module ElasticsearchRepositories
       # @param [BaseStrategy] strategy_klass
       # @param [String] name the identifier of the strategy, can be used if updating the strategy later on is desired
       # @return [void]
-      def register_strategy(strategy_klass, name='main', &block)
+      def register_strategy(strategy_klass, name = 'main', &)
         self.indexing_strategies ||= []
 
         # raise error for diplicate name
-        if get_strategy(name)
-          raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}")
-        end
+        raise StandardError.new("deplicate strategy name '#{name}' on model #{self.name}") if get_strategy(name)
 
-        strategy = strategy_klass.new(self, ::ElasticsearchRepositories.client, name, &block)
+        strategy = strategy_klass.new(self, ::ElasticsearchRepositories.client, name, &)
         indexing_strategies.push(strategy)
 
         # add class to registry unless already registered
-        if self.is_a?(Class) && !::ElasticsearchRepositories::ClassRegistry.all.map(&:to_s).include?(self.name)
-          ::ElasticsearchRepositories::ClassRegistry.add(self)
-        end
+        return unless is_a?(Class) && !::ElasticsearchRepositories::ClassRegistry.all.map(&:to_s).include?(self.name)
+
+        ::ElasticsearchRepositories::ClassRegistry.add(self)
       end
 
       # Update an indexing strategy by name
       #
       # @param [String] name the identifier of the strategy
       # @return [void]
-      def update_strategy(name, &block)
+      def update_strategy(name, &)
         strategy = get_strategy(name)
-        if !strategy
-          raise StandardError.new("strategy '#{name}' not found on model #{self.name}")
-        end
+        raise StandardError.new("strategy '#{name}' not found on model #{self.name}") unless strategy
 
-        strategy.update(&block)
+        strategy.update(&)
       end
 
       # @param [String] name
       # @return [NilClass|BaseStrategy]
       def get_strategy(name)
-        indexing_strategies&.find{|s| s.name == name }
+        indexing_strategies&.find { |s| s.name == name }
       end
 
       # Returns the first strategy (for now)
@@ -353,7 +281,7 @@ module ElasticsearchRepositories
       #
       # @return [String]
       def _to_index_model_name
-        self.name.underscore.dasherize.pluralize
+        name.underscore.dasherize.pluralize
       end
 
       # this base name is a contract to be followed by each class
@@ -375,7 +303,7 @@ module ElasticsearchRepositories
           end
         end
       end
-      
+
     end
 
     module InstanceMethods
@@ -386,7 +314,7 @@ module ElasticsearchRepositories
       # @return [void]
       def index_with_all_strategies(action = 'create', &block)
         self.class.indexing_strategies.each do |strategy|
-          index_with_strategy(action, strategy, &block)
+          index_with_strategy(strategy, action, &block)
         end
       end
 
@@ -395,14 +323,14 @@ module ElasticsearchRepositories
       # @param [String] action
       # @param [String|BaseStrategy] strategy, name or instance
       # @return [void]
-      def index_with_strategy(action = 'create', strategy, &block)
+      def index_with_strategy(strategy, action = 'create', &)
         strategy = self.class.get_strategy(strategy) unless strategy.is_a? BaseStrategy
 
-        strategy.index_record_to_es(action, self, &block)
+        strategy.index_record_to_es(action, self, &)
       end
 
       private
-  
+
       # Override this method on your model to handle indexing
       #
       # @param [ElasticsearchRepositories::BaseStrategy] strategy
@@ -416,7 +344,7 @@ module ElasticsearchRepositories
       #   @option options [Hash] body
       #   @option options [String] index
       # @return [void]
-      def index_document(strategy, action, **options)
+      def index_document(_strategy, _action, **_options)
         raise NotImplementedError('need to implement own index_document method')
       end
 

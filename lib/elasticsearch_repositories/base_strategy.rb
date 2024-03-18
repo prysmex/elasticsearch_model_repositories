@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # require_relative 'strategy/configuration'
 # require_relative 'strategy/importing'
 # require_relative 'strategy/indexing'
@@ -6,7 +8,7 @@
 # require_relative 'strategy/serializing'
 
 module ElasticsearchRepositories
-  
+
   #
   # Use this class as a base to create your own strategies by inheriting from it.
   # Once you've defined this defined your strategy, you can register it in your models
@@ -29,15 +31,13 @@ module ElasticsearchRepositories
     include ElasticsearchRepositories::Strategy::Searching
     include ElasticsearchRepositories::Strategy::Serializing
 
-    attr_reader :host_class
-    attr_reader :client
-    attr_reader :name
+    attr_reader :host_class, :client, :name
 
-    CONFIGURABLE_METHODS = %i(
+    CONFIGURABLE_METHODS = %i[
       target_index_name search_index_name current_index_name
       reload_indices_iterator index_without_id as_indexed_json
       index_record_to_es reindexing_includes_proc custom_doc_id
-    ).freeze
+    ].freeze
 
     class << self
 
@@ -91,17 +91,17 @@ module ElasticsearchRepositories
     # @param [String] name the identifier of the strategy
     # @param [Proc] &block used to configure the strategy
     #
-    def initialize(host_class, client, name=nil, &block)
+    def initialize(host_class, client, name = nil, &)
       @host_class = host_class
       @client = client
       @name = name
-      self.instance_eval(&block) if block_given?
+      instance_eval(&) if block_given?
     end
-    
+
     # excecutes the block on the strategy's context. Useful to override/update methods
     # @return [void]
-    def update(&block)
-      self.instance_eval(&block) if block_given?
+    def update(&)
+      instance_eval(&) if block_given?
     end
 
     # Same as class method 'configure' but for an instance

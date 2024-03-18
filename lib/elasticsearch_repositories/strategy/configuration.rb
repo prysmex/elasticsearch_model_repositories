@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Strategy
-    
+
     #
     # This module contains all methods used by BaseStrategy regarding:
     #
@@ -24,7 +26,7 @@ module ElasticsearchRepositories
       #
       # @param record instance to calculate the index name
       # @return [String]
-      def target_index_name(record)
+      def target_index_name(_record)
         raise NotImplementedError.new('need to implement own target_index_name method')
       end
 
@@ -44,12 +46,12 @@ module ElasticsearchRepositories
       #
       # @param [Hash] options
       # @return [void]
-      def set_mappings(options={}, &block)
+      def set_mappings(options = {}, &)
         @cached_mapping ||= Mappings.new(options, self)
 
         @cached_mapping.options.update(options) unless options.empty?
         if block_given?
-          @cached_mapping.instance_eval(&block)
+          @cached_mapping.instance_eval(&)
         else
           @cached_mapping
         end
@@ -63,19 +65,19 @@ module ElasticsearchRepositories
       # set/update the settings to the strategy
       #
       # @return [void]
-      def set_settings(settings={}, &block)
+      def set_settings(settings = {}, &)
         @cached_settings ||= Settings.new(settings)
 
         @cached_settings.settings.update(settings) unless settings.empty?
 
         if block_given?
-          instance_eval(&block)
-          return self
+          instance_eval(&)
+          self
         else
           @cached_settings
         end
       end
-      
+
     end
   end
 end
