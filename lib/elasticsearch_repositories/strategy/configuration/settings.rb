@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   module Strategy
     module Configuration
@@ -8,7 +10,7 @@ module ElasticsearchRepositories
         attr_accessor :settings
 
         # @param [Hash] settings index settings
-        def initialize(settings={})
+        def initialize(settings = {})
           @settings = settings
         end
 
@@ -17,7 +19,7 @@ module ElasticsearchRepositories
           @settings
         end
 
-        alias_method :as_json, :to_hash
+        alias as_json to_hash
 
       end
 

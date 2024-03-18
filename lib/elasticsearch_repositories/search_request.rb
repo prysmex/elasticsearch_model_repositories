@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   class SearchRequest
     attr_reader :strategy_or_wrapper, :definition
-    
+
     include ActiveSupport::Callbacks
     define_callbacks :execute
 
@@ -9,29 +11,28 @@ module ElasticsearchRepositories
     # @param query_or_payload [String,Hash,Object] The search request definition
     #                                              (String, Hash, or object responding to `to_hash`)
     # @param options [Hash] Optional parameters to be passed to the Elasticsearch client
-    def initialize(strategy_or_wrapper, query_or_payload, options={})
-      @strategy_or_wrapper   = strategy_or_wrapper
+    def initialize(strategy_or_wrapper, query_or_payload, options = {})
+      @strategy_or_wrapper = strategy_or_wrapper
 
-      case
-        # search query: ...
-        when query_or_payload.respond_to?(:to_hash)
-          body = query_or_payload.to_hash
+      index = options[:index] || strategy_or_wrapper.search_index_name
+
+      # search query: ...
+      if query_or_payload.respond_to?(:to_hash)
+        body = query_or_payload.to_hash
 
         # search '{ "query" : ... }'
-        when query_or_payload.is_a?(String) && query_or_payload =~ /^\s*{/
-          body = query_or_payload
+      elsif query_or_payload.is_a?(String) && query_or_payload =~ /^\s*{/
+        body = query_or_payload
 
         # search '...'
-        else
-          q = query_or_payload
+      else
+        q = query_or_payload
       end
 
-      __index_name    = options[:index] || strategy_or_wrapper.search_index_name
-
-      if body
-        @definition = options.merge({ index: __index_name, body: body })
+      @definition = if body
+        options.merge({ index:, body: })
       else
-        @definition = options.merge({ index: __index_name, q: q })
+        options.merge({ index:, q: })
       end
     end
 

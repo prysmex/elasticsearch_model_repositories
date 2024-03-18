@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 module ElasticsearchRepositories
   # used to keep track which classes have the ElasticsearchRepositories::Model
   # module included
   class ClassRegistry
-    
+
     def initialize
       @models = []
     end
@@ -12,7 +14,7 @@ module ElasticsearchRepositories
     # @api private
     #
     def self.__instance
-      @instance ||= new
+      @__instance ||= new
     end
 
     # Adds a model to the registry
