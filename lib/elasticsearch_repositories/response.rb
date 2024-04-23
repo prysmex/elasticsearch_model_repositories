@@ -8,6 +8,8 @@ module ElasticsearchRepositories
       # Implements Enumerable and forwards its methods to the {#results} object.
       #
       class Response
+        DEFAULT_SIZE = 10
+
         attr_reader :strategy_or_wrapper, :search
 
         include Enumerable
@@ -31,17 +33,20 @@ module ElasticsearchRepositories
         # @return [Hash]
         def response
           with_cache('response') do
-            @search_size = search.definition&.dig(:body, :size) # from query definition
+            @search_size = if (body = search.definition[:body]).is_a?(Hash)
+              body[:size] || body['size'] # from query definition
+            end
+            @search_size ||= DEFAULT_SIZE
             search.execute!
           end
         end
 
         # Returns the collection of "hits" from Elasticsearch
         #
-        # @return [Results]
+        # @return [Array<Result>]
         def results
           with_cache('results') do
-            response.dig('hits', 'hits').map { |hit| Result.new.merge! hit }
+            raw_results.map { |hit| Result.new.merge! hit }
           end
         end
 
@@ -54,23 +59,30 @@ module ElasticsearchRepositories
           end
         end
 
-        # Returns the total number of hits
+        # @note remember to consider track_total_hits
+        # @return [Integer] total number of hits
         def total
           total = response.dig('hits', 'total')
           total.respond_to?(:each_pair) ? total['value'] : total
         end
 
-        # Returns the total number of pages
-        def total_pages(size = @search_size)
-          if size.nil?
-            raise ArgumentError.new(
-              "missing 'size' argument, pass it to .total_pages(size) or ensure query definition contains :size"
-            )
-          end
+        # @note remember to consider track_total_hits
+        # @return [Integer] total number of pages
+        def total_pages
+          return 0 if @search_size.zero?
 
-          return 0 if size.zero?
+          (total / @search_size.to_f).ceil
+        end
 
-          (total / size.to_f).ceil
+        # @note remember to consider track_total_hits
+        # @return [Boolean]
+        def incomplete_page?
+          raw_results.size < @search_size
+        end
+
+        # @return [Array<Hash>]
+        def raw_results
+          response.dig('hits', 'hits')
         end
 
         # Returns the max_score
@@ -78,13 +90,13 @@ module ElasticsearchRepositories
           response.dig('hits', 'max_score')
         end
 
-        # Returns the "took" time
+        # @return [Integer] time in ms
         def took
           response['took']
         end
 
-        # Returns whether the response timed out
-        def timed_out
+        # @return [Boolean]
+        def timed_out?
           response['timed_out']
         end
 
@@ -93,14 +105,14 @@ module ElasticsearchRepositories
           response['_shards']
         end
 
-        # Returns aggregations
+        # @return [Aggregations]
         def aggregations
           with_cache('aggregations') do
             Aggregations.new.merge!(response['aggregations'] || {})
           end
         end
 
-        # Returns suggestions
+        # @return [Suggestions]
         def suggestions
           with_cache('suggestions') do
             Suggestions.new.merge!(response['suggest'] || {})

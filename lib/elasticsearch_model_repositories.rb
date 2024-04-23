@@ -73,12 +73,17 @@ module ElasticsearchRepositories
 
     # @todo
     #
-    # def scroll
+    # def search_and_auto_search_after
     # end
 
     # @todo
     #
-    # def search_and_scroll
+    # def search_and_auto_scroll
+    # end
+
+    # @todo
+    #
+    # def search_and_auto_search_after_or_auto_scroll
     # end
 
     # Yield self to allow configuing in a block
