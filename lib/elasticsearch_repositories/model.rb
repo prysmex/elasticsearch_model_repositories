@@ -34,6 +34,7 @@ module ElasticsearchRepositories
       # @param [Proc] each_index_proc
       # @param [Boolean] refresh
       # @param [Boolean] verify_count
+      # @param [String|NilClass|FalseClass] tmp_refresh_interval
       # @param [String|NilClass] refresh_interval
       # @param [Hash] find_in_batches_params
       # @param [Hash] create_index_params
@@ -128,6 +129,7 @@ module ElasticsearchRepositories
       # @param [ElasticsearchRepositories::BaseStrategy] strategy
       # @param [Hash] find_in_batches_params
       # @param [Hash] bulk_request_params
+      # @param [String|NilClass|FalseClass] tmp_refresh_interval
       # @param [String|NilClass] refresh_interval
       # @param [Integer] batch_sleep
       # @param [Proc] bulkify
@@ -138,10 +140,10 @@ module ElasticsearchRepositories
         strategy:,
         find_in_batches_params: {},
         bulk_request_params: {},
-        refresh_interval: '-1',
+        tmp_refresh_interval: '-1',
         batch_sleep: 2,
         bulkify: nil,
-        **_kwargs # allow passing unknown kwargs
+        **kwargs # allow passing unknown kwargs
       )
 
         return_hash = { errors: 0, total: 0 }
@@ -150,7 +152,12 @@ module ElasticsearchRepositories
         bulkify ||= adapter_importing_module::BULKIFY_PROC
 
         # call adapter find_in_batches
-        measurements = ElasticsearchRepositories.with_refresh_interval(strategy, index, refresh_interval) do
+        measurements = ElasticsearchRepositories.with_refresh_interval(
+          strategy,
+          index,
+          tmp_refresh_interval,
+          **kwargs # pass refresh_interval
+        ) do
           ElasticsearchRepositories.with_timer(average: true) do |timer, timer_data|
             adapter_importing_module.find_in_batches(self, **find_in_batches_params) do |batch|
               batch_size = batch.size

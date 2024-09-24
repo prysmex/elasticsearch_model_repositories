@@ -95,19 +95,32 @@ module ElasticsearchRepositories
     #
     # @param [BaseStrategy] strategy
     # @param [String] index
-    # @param [String] interval
+    # @param [NilClass|String|FalseClass] tmp_interval
+    # @options [Hash]
+    # @option current_interval [NilClass|String]
     # @return [void]
-    def with_refresh_interval(strategy, index, interval)
-      return yield if interval == false
+    def with_refresh_interval(strategy, index, tmp_interval, **options)
+      # do nothing with refresh_interval when tmp_interval is false
+      return yield if tmp_interval == false
 
-      current_interval = strategy
-        .client
-        .indices
-        .get_settings(index:)
-        .dig(index, 'settings', 'index', 'refresh_interval') || '1s'
+      # allow setting nil without trying to default
+      current_interval = if options.key?(:refresh_interval)
+        options[:refresh_interval]
+      else
+        # default from current
+        begin
+          strategy
+            .client
+            .indices
+            .get_settings(index:)
+            .dig(index, 'settings', 'index', 'refresh_interval')
+        rescue Elastic::Transport::Transport::Errors::NotFound => _e
+          strategy.settings.to_hash.dig(:index, :refresh_interval)
+        end
+      end
 
       strategy.client.indices.put_settings(
-        body: { index: { refresh_interval: interval } },
+        body: { index: { refresh_interval: tmp_interval } },
         index:
       )
 
