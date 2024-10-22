@@ -88,7 +88,7 @@ module ElasticsearchRepositories
             client.cat.indices(
               index: search_index_name, h: %w[index] # 'docs.count'
             ).each_line do |line|
-              index = line.chomp.split("\s")
+              index = line.chomp.split
               array.push(index) if index.present?
             end
           rescue Elastic::Transport::Transport::Errors::NotFound => e

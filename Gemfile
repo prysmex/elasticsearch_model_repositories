@@ -12,6 +12,6 @@ gem 'debug', '>= 1.0.0'
 gem 'rake', '~> 13.1'
 
 # rubocop
-gem 'rubocop', '~> 1.62'
-gem 'rubocop-performance', '~> 1.20'
+gem 'rubocop', '~> 1.67'
+gem 'rubocop-performance', '~> 1.22'
 gem 'rubocop-rake', '~> 0.6'
