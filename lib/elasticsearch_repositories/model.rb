@@ -56,7 +56,6 @@ module ElasticsearchRepositories
         strategy_names: nil,
         **override_options
       )
-
         # defaults
         override_options.reverse_merge!(
           refresh: true,
@@ -145,7 +144,6 @@ module ElasticsearchRepositories
         bulkify: nil,
         **kwargs # allow passing unknown kwargs
       )
-
         return_hash = { errors: 0, total: 0 }
 
         adapter_importing_module = Adapter.new(self).importing_mixin
