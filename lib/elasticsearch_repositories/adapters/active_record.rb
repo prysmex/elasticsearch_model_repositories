@@ -94,11 +94,24 @@ module ElasticsearchRepositories
         #
         # @see http://api.rubyonrails.org/classes/ActiveRecord/Batches.html ActiveRecord::Batches.find_in_batches
         #
-        def self.find_in_batches(model, query: nil, scope: nil, **find_params)
+        def self.find_in_batches(model, query: nil, scope: nil, **)
           model = model.public_send(scope) if scope
           model = model.instance_exec(&query) if query
 
-          model.find_in_batches(**find_params) do |batch|
+          model.find_in_batches(**) do |batch|
+            yield(batch) if batch.present?
+          end
+        end
+
+        # Similar to find_in_batches but with in_batches api
+        #
+        # @see http://api.rubyonrails.org/classes/ActiveRecord/Batches.html ActiveRecord::Batches.in_batches
+        #
+        def self.in_batches(model, query: nil, scope: nil, **)
+          model = model.public_send(scope) if scope
+          model = model.instance_exec(&query) if query
+
+          model.in_batches(**) do |batch|
             yield(batch) if batch.present?
           end
         end

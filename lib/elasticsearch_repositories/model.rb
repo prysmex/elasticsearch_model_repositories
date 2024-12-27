@@ -54,6 +54,7 @@ module ElasticsearchRepositories
         end_time: nil,
         each_batch_proc: nil,
         strategy_names: nil,
+        ignore_reindexing_includes_proc: false,
         **override_options
       )
         # defaults
@@ -66,7 +67,7 @@ module ElasticsearchRepositories
 
         # call reload_indices_iterator for all strategies
         indexing_strategies.each_with_object({}) do |strategy, return_hash|
-          next if strategy_names && !strategy_names.includes?(strategy.name)
+          next if strategy_names && !strategy_names.include?(strategy.name)
 
           key = strategy.class.name
           current_hash = return_hash[key] = []
@@ -89,7 +90,11 @@ module ElasticsearchRepositories
 
             # find_in_batches_params
             options[:find_in_batches_params] ||= {}
-            options[:find_in_batches_params][:query] = -> { strategy.reindexing_includes_proc.call(import_db_query) }
+            options[:find_in_batches_params][:query] = if ignore_reindexing_includes_proc
+              -> { import_db_query }
+            else
+              -> { strategy.reindexing_includes_proc.call(import_db_query) }
+            end
 
             # create_index_params
             options[:create_index_params] ||= {}
@@ -104,7 +109,7 @@ module ElasticsearchRepositories
             )
 
             import_return = if block_given?
-              yield(self, strategy, options)
+              yield(self, strategy, options, import_db_query)
             else
               import(strategy:, **options, &each_batch_proc)
             end
