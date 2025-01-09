@@ -64,7 +64,7 @@ Here is a list of methods that you may want to consider overriding on your custo
 - index_without_id
 - as_indexed_json
 - index_record_to_es
-- reindexing_includes_proc
+- reindex_process_query
 
 Now lets register this strategy into a model.
 It is important to add the following lines to your model that provide the methods for registering strategies, indexing, reindexing, and some other utilities.
@@ -389,9 +389,9 @@ class YourModel
     end
 
     configure_instance {
-      as_indexed_json: ->(record) {
+      as_indexed_json: ->(record) do
         super(record)
-      },
+      end,
       ...
     }
 

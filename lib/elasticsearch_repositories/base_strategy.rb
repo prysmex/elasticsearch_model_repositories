@@ -36,7 +36,8 @@ module ElasticsearchRepositories
     CONFIGURABLE_METHODS = %i[
       target_index_name search_index_name current_index_name
       reload_indices_iterator index_without_id as_indexed_json
-      index_record_to_es reindexing_includes_proc custom_doc_id
+      index_record_to_es reindex_process_query custom_doc_id
+      reindex_as_indexed_json
     ].freeze
 
     class << self

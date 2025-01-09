@@ -37,7 +37,7 @@ module ElasticsearchRepositories
       # @todo this is only for ActiveRecord based models
       #
       # @return []
-      def reindexing_includes_proc
+      def reindex_process_query
         proc { |query| query.where('') }
       end
 

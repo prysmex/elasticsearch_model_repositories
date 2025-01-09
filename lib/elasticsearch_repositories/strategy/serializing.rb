@@ -28,6 +28,11 @@ module ElasticsearchRepositories
         record.as_json # options.merge root: false
       end
 
+      # alias_method :reindex_as_indexed_json, :as_indexed_json
+      def reindex_as_indexed_json(...)
+        as_indexed_json(...)
+      end
+
     end
 
   end

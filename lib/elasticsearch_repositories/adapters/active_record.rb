@@ -83,11 +83,10 @@ module ElasticsearchRepositories
       module Importing
 
         BULKIFY_PROC = ->(model, strategy) do
-          if strategy.index_without_id
-            { index: { data: strategy.as_indexed_json(model) } }
-          else
-            { index: { _id: strategy.custom_doc_id(model) || model.id, data: strategy.as_indexed_json(model) } }
-          end
+          index = { data: strategy.reindex_as_indexed_json(model) }
+          index[:_id] = strategy.custom_doc_id(model) || model.id unless strategy.index_without_id
+
+          { index: }
         end
 
         # Fetch batches of records from the database (used by the import method)

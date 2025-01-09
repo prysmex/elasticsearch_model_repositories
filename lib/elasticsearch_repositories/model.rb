@@ -54,7 +54,7 @@ module ElasticsearchRepositories
         end_time: nil,
         each_batch_proc: nil,
         strategy_names: nil,
-        ignore_reindexing_includes_proc: false,
+        ignore_reindex_process_query: false,
         **override_options
       )
         # defaults
@@ -85,15 +85,18 @@ module ElasticsearchRepositories
 
             options[:each_index_proc]&.call(options)
 
+            # NOTE: reindex_process_query and process_query achieve the same function, but reindex_process_query is
+            # designed to be defined in the strategy and process_query to be passed in a specific context.
+
             # allow to process query while reindexing
             import_db_query = options[:process_query].call(import_db_query) if options[:process_query]
 
             # find_in_batches_params
             options[:find_in_batches_params] ||= {}
-            options[:find_in_batches_params][:query] = if ignore_reindexing_includes_proc
+            options[:find_in_batches_params][:query] = if ignore_reindex_process_query
               -> { import_db_query }
             else
-              -> { strategy.reindexing_includes_proc.call(import_db_query) }
+              -> { strategy.reindex_process_query.call(import_db_query) }
             end
 
             # create_index_params
@@ -109,7 +112,7 @@ module ElasticsearchRepositories
             )
 
             import_return = if block_given?
-              yield(self, strategy, options, import_db_query)
+              yield(self, strategy, options)
             else
               import(strategy:, **options, &each_batch_proc)
             end
