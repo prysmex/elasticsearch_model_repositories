@@ -164,10 +164,14 @@ module ElasticsearchRepositories
           tmp_refresh_interval,
           **kwargs # pass refresh_interval
         ) do
-          ElasticsearchRepositories.with_timer(average: true) do |timer, timer_data|
+          now = Time.now
+          i = 0
+
+          meas = ElasticsearchRepositories.with_timer(average: true, processor: ->(v) { v.to_i }) do |timer, timer_data|
             adapter_importing_module.find_in_batches(self, **find_in_batches_params) do |batch|
+              i += 1
               batch_size = batch.size
-              normalizer = ->(took) { batch_size.fdiv(took) }
+              normalizer = ->(took) { batch_size.fdiv(took).to_i }
 
               # time bulkify
               bulk, _took = timer.call(:bulkify_per_s, normalizer) do
@@ -182,14 +186,8 @@ module ElasticsearchRepositories
                 }.merge!(bulk_request_params))
               end
 
-              # register response took
-              timer_data[:indexing_speed_per_s] ||= []
-              timer_data[:indexing_speed_per_s].push(
-                normalizer.call(response['took'] / 1000.0)
-              )
-
               # get items with errors
-              error_items = response['items'].select { |item| item.values.first['error'] }
+              error_items = response['errors'] ? response['items'].select { |item| item.values.first['error'] } : []
 
               # increment errors
               return_hash[:errors] += error_items.size
@@ -202,6 +200,13 @@ module ElasticsearchRepositories
               sleep(batch_sleep) if batch_sleep
             end
           end
+
+          took = (Time.now - now) - (i * batch_sleep)
+
+          {
+            total_s: took.round(2),
+            total_per_s: (return_hash[:total] / took).to_i
+          }.merge(meas)
         end
 
         return_hash.merge!(measurements)

@@ -150,7 +150,7 @@ module ElasticsearchRepositories
     #
     # @param [Boolean] average
     # @return [Hash{* => Array<Integer>}]
-    def with_timer(average: false)
+    def with_timer(average: false, processor: nil)
       obj = {}
       wrapper = ->(key, normalizer = nil, &block) do
         key_array = obj[key] ||= []
@@ -163,8 +163,13 @@ module ElasticsearchRepositories
         [value, took]
       end
       yield wrapper, obj
-      obj = obj.transform_values! { |v| v.sum(0.0) / v.size } if average
-      obj
+      return obj unless average || processor
+
+      obj.transform_values do |v|
+        v = (v.sum(0.0) / v.size).round(2) if average
+        v = processor.call(v) if processor
+        v
+      end
     end
 
   end
