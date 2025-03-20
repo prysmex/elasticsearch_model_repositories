@@ -44,7 +44,11 @@ require_relative 'elasticsearch_repositories/response'
 #
 module ElasticsearchRepositories
 
+  @allow_ar_order = false
+
   class << self
+
+    attr_accessor :allow_ar_order
 
     # Creates and caches an Elasticsearch::Client
     #

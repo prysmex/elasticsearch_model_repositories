@@ -127,11 +127,11 @@ module ElasticsearchRepositories
 
       # @note search_after is not a frozen context, need to implement Point In Time
       # @return [Array<ElasticsearchRepositories::Response::Response>]
-      def search_and_auto_search_after_or_auto_scroll(*args, **options, &)
+      def search_and_auto_search_after_or_auto_scroll(*args, **, &)
         if Searching.query_has_sorting?(args.first)
-          search_and_auto_search_after(*args, **options, &)
+          search_and_auto_search_after(*args, **, &)
         else
-          search_and_auto_scroll(*args, **options, &)
+          search_and_auto_scroll(*args, **, &)
         end
       end
 

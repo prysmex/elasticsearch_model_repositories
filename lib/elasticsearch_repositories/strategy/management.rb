@@ -26,7 +26,7 @@ module ElasticsearchRepositories
         force: false,
         settings: self.settings.to_hash,
         mappings: self.mappings.to_hash,
-        **options
+        **
       )
         delete_index(index:) if force
 
@@ -38,7 +38,7 @@ module ElasticsearchRepositories
             settings:,
             mappings:
           },
-          **options
+          **
         )
       end
 
@@ -47,8 +47,8 @@ module ElasticsearchRepositories
       # @param [String] index
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#delete options
       # @return [Hash, nil] nil if not found
-      def delete_index(index: current_index_name, **options)
-        client.indices.delete(index:, **options)
+      def delete_index(index: current_index_name, **)
+        client.indices.delete(index:, **)
       rescue Elastic::Transport::Transport::Errors::NotFound => e
         client.transport.logger&.debug("[!!!] Index #{index} does not exist (#{e.class})")
       end
@@ -58,16 +58,16 @@ module ElasticsearchRepositories
       # @param [String] index
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#exists options
       # @param [Boolean] true if exists
-      def index_exists?(index: current_index_name, **options)
-        client.indices.exists(index:, **options)
+      def index_exists?(index: current_index_name, **)
+        client.indices.exists(index:, **)
       end
 
       # Performs the "refresh" operation for the index (useful e.g. in tests)
       # @param [String] index
       # @param [Hash] options Elasticsearch::XPack::API::Indices::IndicesClient#refresh options
       # @return [Hash, nil] nil if not found
-      def refresh_index(index: current_index_name, **options)
-        client.indices.refresh(index:, **options)
+      def refresh_index(index: current_index_name, **)
+        client.indices.refresh(index:, **)
       rescue Elastic::Transport::Transport::Errors::NotFound => e
         client.transport.logger&.debug("[!!!] Index #{index} does not exist (#{e.class})")
       end

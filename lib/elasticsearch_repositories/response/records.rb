@@ -58,9 +58,9 @@ module ElasticsearchRepositories
       # Delegate to `@records` if it responds to method (public only)
       #
       # @override
-      def method_missing(method_name, *args, **kwargs)
-        if records.respond_to?(method_name)
-          records.public_send(method_name, *args, **kwargs)
+      def method_missing(method_name, *, **)
+        if (current_records = records).respond_to?(method_name)
+          current_records.public_send(method_name, *, **)
         else
           super
         end
