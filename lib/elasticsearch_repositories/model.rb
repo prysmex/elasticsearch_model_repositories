@@ -150,7 +150,7 @@ module ElasticsearchRepositories
         tmp_refresh_interval: '-1',
         batch_sleep: 2,
         bulkify: nil,
-        **kwargs # allow passing unknown kwargs
+        ** # allow passing unknown kwargs
       )
         return_hash = { errors: 0, total: 0 }
 
@@ -162,7 +162,7 @@ module ElasticsearchRepositories
           strategy,
           index,
           tmp_refresh_interval,
-          **kwargs # pass refresh_interval
+          ** # pass refresh_interval
         ) do
           now = Time.now
           i = 0
@@ -314,9 +314,9 @@ module ElasticsearchRepositories
       # Gets all possible indices for all strategies implemented on the class
       #
       # @return [Array<String>]
-      def all_klass_indices(*args, **kwargs)
+      def all_klass_indices(*, **)
         indexing_strategies.each_with_object([]) do |strategy, obj|
-          strategy.all_indices(*args, **kwargs).each do |index|
+          strategy.all_indices(*, **).each do |index|
             obj.push(index)
           end
         end
@@ -330,9 +330,9 @@ module ElasticsearchRepositories
       #
       # @param [String] action
       # @return [void]
-      def index_with_all_strategies(action = 'create', &block)
+      def index_with_all_strategies(action = 'create', &)
         self.class.indexing_strategies.each do |strategy|
-          index_with_strategy(strategy, action, &block)
+          index_with_strategy(strategy, action, &)
         end
       end
 

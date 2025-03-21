@@ -80,7 +80,7 @@ module ElasticsearchRepositories
       #
       # @param [Boolean] get_from_api
       # @return [Array<String>]
-      def all_indices(*args, get_from_api: false)
+      def all_indices(*, get_from_api: false)
         array = []
 
         if get_from_api
@@ -95,7 +95,7 @@ module ElasticsearchRepositories
             client.transport.logger&.debug(e.message)
           end
         else
-          reload_indices_iterator(*args) do |_import_db_query, iterator_options|
+          reload_indices_iterator(*) do |_import_db_query, iterator_options|
             index = iterator_options[:index]
             array.push(index) if index
           end

@@ -3,13 +3,13 @@
 inherit_from:
   <%= ENV['IGNORE_RUBOCOP_TODO'] ? "# - .rubocop_todo.yml" : "- .rubocop_todo.yml" %>
 
-require:
+plugins:
   - rubocop-rake
   - rubocop-performance
 
 AllCops:
   NewCops: enable
-  # TargetRubyVersion: 3.3.6
+  TargetRubyVersion: 3.4.2
   # TargetRailsVersion: 7.2.2
   # Exclude:
   #   - 'Gemfile.lock'
