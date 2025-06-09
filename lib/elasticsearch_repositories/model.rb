@@ -167,7 +167,7 @@ module ElasticsearchRepositories
           now = Time.now
           i = 0
 
-          meas = ElasticsearchRepositories.with_timer(average: true, processor: ->(v) { v.to_i }) do |timer, timer_data|
+          meas = ElasticsearchRepositories.with_timer(average: true, processor: lambda(&:to_i)) do |timer, timer_data|
             adapter_importing_module.find_in_batches(self, **find_in_batches_params) do |batch|
               i += 1
               batch_size = batch.size

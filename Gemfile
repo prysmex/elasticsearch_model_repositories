@@ -9,9 +9,9 @@ gemspec
 
 # gem 'bundler', '2.6.2'
 gem 'debug', '>= 1.10'
-gem 'rake', '~> 13.2'
+gem 'rake', '~> 13.3'
 
 # rubocop
-gem 'rubocop', '~> 1.74'
-gem 'rubocop-performance', '~> 1.24'
+gem 'rubocop', '~> 1.76'
+gem 'rubocop-performance', '~> 1.25'
 gem 'rubocop-rake', '~> 0.7'
