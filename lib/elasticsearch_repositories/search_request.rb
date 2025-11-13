@@ -5,6 +5,7 @@ module ElasticsearchRepositories
     attr_reader :strategy_or_wrapper, :definition
 
     include ActiveSupport::Callbacks
+
     define_callbacks :execute
 
     # @param strategy_or_wrapper [BaseStrategy|MultistrategyWrapper] instance
