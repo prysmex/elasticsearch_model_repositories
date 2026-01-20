@@ -10,7 +10,7 @@ module ElasticsearchRepositories
       class Response
         DEFAULT_SIZE = 10
 
-        attr_reader :strategy_or_wrapper, :search
+        attr_reader :strategy_or_wrapper, :search, :search_size
 
         include Enumerable
 
@@ -68,8 +68,8 @@ module ElasticsearchRepositories
 
         # @note remember to consider track_total_hits
         # @return [Integer] total number of pages
-        def total_pages
-          return 0 if @search_size.zero?
+        def total_pages(safe: false)
+          return if safe && @search_size.zero?
 
           (total / @search_size.to_f).ceil
         end
