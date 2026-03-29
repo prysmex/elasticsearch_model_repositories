@@ -299,7 +299,7 @@ module ElasticsearchRepositories
       #
       # @return [String]
       def _to_index_model_name
-        name.underscore.dasherize.pluralize
+        @_to_index_model_name ||= name.underscore.dasherize.pluralize
       end
 
       # this base name is a contract to be followed by each class
