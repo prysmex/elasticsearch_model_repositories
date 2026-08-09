@@ -289,7 +289,7 @@ module ElasticsearchRepositories
       #
       # @return [BaseStrategy]
       def default_indexing_strategy
-        self.indexing_strategies.first
+        indexing_strategies.first
       end
 
       # defines how a model's name is embedded in an index name
